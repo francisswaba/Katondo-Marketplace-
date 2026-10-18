@@ -10,8 +10,11 @@
     "dev": "npm run dev --workspace @katondo/api & npm run dev --workspace @katondo/web",
     "dev:api": "npm run dev --workspace @katondo/api",
     "dev:web": "npm run dev --workspace @katondo/web",
-    "build": "npm run build --workspace @katondo/contracts && npm run build --workspace @katondo/api && npm run build --workspace @katondo/web",
-    "typecheck": "npm run build --workspace @katondo/contracts && npm run typecheck --workspace @katondo/api && npm run typecheck --workspace @katondo/web"
+    "dev:mobile": "npm run dev --workspace @katondo/mobile",
+    "db:migrate": "npm run db:migrate --workspace @katondo/api",
+    "db:seed": "npm run db:seed --workspace @katondo/api",
+    "build": "npm run build --workspace @katondo/contracts && npm run build --workspace @katondo/api && npm run build --workspace @katondo/web && npm run build --workspace @katondo/mobile",
+    "typecheck": "npm run build --workspace @katondo/contracts && npm run typecheck --workspace @katondo/api && npm run typecheck --workspace @katondo/web && npm run typecheck --workspace @katondo/mobile"
   },
   "engines": {
     "node": ">=20"

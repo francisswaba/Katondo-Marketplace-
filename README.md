@@ -14,15 +14,26 @@ The initial TypeScript monorepo and a web-to-API catalogue slice are in place. T
 ## Run locally
 
 1. Install Node.js 20 or newer and Docker Desktop.
-2. Copy `.env.example` to `.env` and keep local credentials out of Git.
+2. Copy root `.env.example` to `.env` for API configuration. Copy `apps/mobile/.env.example` to `apps/mobile/.env` for the public API URL. Keep local credentials out of Git. For a physical phone, set the mobile URL to the computer's LAN IP instead of `localhost`.
 3. Start local services with `docker compose up -d`.
 4. Install dependencies with `npm install`.
-5. Start API and web in separate terminals with `npm run dev:api` and `npm run dev:web`.
-6. Open `http://localhost:3000`; the API listens on `http://localhost:4000`.
+5. Apply the schema and development catalogue with `npm run db:migrate` and `npm run db:seed`.
+6. Start API and web with `npm run dev:api` and `npm run dev:web`; start the native app with `npm run dev:mobile`.
+7. Open `http://localhost:3000`; the API listens on `http://localhost:4000`.
 
-## First implementation milestone
+## Authentication boundary
 
-Build a TypeScript monorepo with `apps/web`, `apps/mobile`, and `apps/api`, plus shared contracts and design tokens. The first vertical slice should serve seeded categories and product listings from PostgreSQL through a typed API to the web client. Keep identity, payment, delivery, auctions, and livestream providers behind replaceable interfaces until the relevant choices are validated.
+The API validates signed JWT access tokens against a configured remote JWKS endpoint. Set `AUTH_ISSUER`, `AUTH_AUDIENCE`, and `AUTH_JWKS_URL` from the selected identity provider before using authenticated routes. Tokens must carry a `sub` and a top-level `roles` array containing Katondo role names. Public catalogue access remains unauthenticated; `/api/account` requires a valid token and `/api/admin/health` additionally requires the `administrator` role. No provider or login screen is configured yet.
+
+## Current implementation
+
+- `apps/web`: responsive marketplace storefront backed by the catalogue API.
+- `apps/mobile`: Expo iOS/Android shell backed by the same catalogue API, using platform system typography.
+- `apps/api`: catalogue API and configurable JWT/JWKS authorization boundary.
+- `infra/postgres/migrations`: versioned schema migrations; `infra/postgres/seed.sql` contains development-only catalogue data.
+- `.github/workflows/ci.yml`: install, type-check, and build validation on pushes and pull requests.
+
+Payment, payout, delivery, compliance, and livestream providers remain open decisions and are not yet integrated.
 
 ## Proposed local services
 
@@ -31,7 +42,7 @@ Build a TypeScript monorepo with `apps/web`, `apps/mobile`, and `apps/api`, plus
 - Object storage/CDN adapter for listing media
 - API and web app started from documented local commands
 
-The initial scaffold includes local service configuration, a starter schema and seed data, typed contracts, and setup instructions. CI workflows, migrations beyond the bootstrap schema, authentication, mobile runtime, and automated checks remain follow-up work.
+The local setup includes Docker services, typed contracts, migrations, seed data, authentication configuration seams, and setup instructions. Provider-backed login, managed delivery, payments and payouts, live shopping, and production deployment remain future work.
 
 ## Decisions to validate before production
 

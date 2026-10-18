@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Katondo",
+    "slug": "katondo",
+    "scheme": "katondo",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "zm.katondo.marketplace"
+    },
+    "android": {
+      "package": "zm.katondo.marketplace"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

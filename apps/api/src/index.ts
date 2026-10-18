@@ -1,7 +1,9 @@
-import 'dotenv/config';
+import './config.js';
 import cors from 'cors';
 import express from 'express';
 import { Pool } from 'pg';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+import type { Request, Response, NextFunction } from 'express';
 import type { CatalogueResponse } from '@katondo/contracts';
 
 const app = express();
@@ -10,6 +12,55 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 app.use(cors());
 app.use(express.json());
+
+type UserRole = 'buyer' | 'individual_seller' | 'business_seller' | 'platform_operator' | 'administrator';
+type AuthenticatedRequest = Request & { user?: { id: string; roles: UserRole[] } };
+
+const issuer = process.env.AUTH_ISSUER;
+const audience = process.env.AUTH_AUDIENCE;
+const jwksUrl = process.env.AUTH_JWKS_URL;
+const remoteJwks = jwksUrl ? createRemoteJWKSet(new URL(jwksUrl)) : null;
+
+async function authenticate(request: AuthenticatedRequest, response: Response, next: NextFunction) {
+  if (!issuer || !audience || !remoteJwks) {
+    response.status(503).json({ error: 'Authentication provider is not configured.' });
+    return;
+  }
+
+  const authorization = request.header('authorization');
+  const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+  if (!token) {
+    response.status(401).json({ error: 'Bearer token required.' });
+    return;
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, remoteJwks, { issuer, audience });
+    if (typeof payload.sub !== 'string') {
+      response.status(401).json({ error: 'Token subject is missing.' });
+      return;
+    }
+    const roleClaims = Array.isArray(payload.roles) ? payload.roles : [];
+    const allowedRoles: UserRole[] = ['buyer', 'individual_seller', 'business_seller', 'platform_operator', 'administrator'];
+    request.user = {
+      id: payload.sub,
+      roles: roleClaims.filter((role): role is UserRole => typeof role === 'string' && allowedRoles.includes(role as UserRole)),
+    };
+    next();
+  } catch {
+    response.status(401).json({ error: 'Invalid or expired bearer token.' });
+  }
+}
+
+function requireRole(role: UserRole) {
+  return (request: AuthenticatedRequest, response: Response, next: NextFunction) => {
+    if (!request.user?.roles.includes(role)) {
+      response.status(403).json({ error: 'Insufficient role.' });
+      return;
+    }
+    next();
+  };
+}
 
 app.get('/health', async (_request, response) => {
   try {
@@ -58,6 +109,35 @@ app.get('/api/catalogue', async (_request, response) => {
   } catch (error) {
     console.error('Catalogue request failed', error);
     response.status(503).json({ error: 'Catalogue is temporarily unavailable.' });
+  }
+});
+
+app.get('/api/account', authenticate, (request: AuthenticatedRequest, response) => {
+  response.json({ id: request.user?.id, roles: request.user?.roles ?? [] });
+});
+
+app.get('/api/admin/health', authenticate, requireRole('administrator'), (_request, response) => {
+  response.json({ status: 'ok' });
+});
+
+app.get('/api/admin/operations/overview', authenticate, requireRole('administrator'), async (_request, response) => {
+  try {
+    const [verification, payments, payouts, deliveryOptions] = await Promise.all([
+      pool.query(`SELECT verification_status AS status, COUNT(*)::int AS count FROM sellers GROUP BY verification_status ORDER BY verification_status`),
+      pool.query(`SELECT status, COUNT(*)::int AS count, COALESCE(SUM(amount_minor), 0)::text AS amount_minor FROM payment_records GROUP BY status ORDER BY status`),
+      pool.query(`SELECT status, COUNT(*)::int AS count, COALESCE(SUM(amount_minor), 0)::text AS amount_minor FROM payout_records GROUP BY status ORDER BY status`),
+      pool.query(`SELECT delivery_mode, COUNT(*)::int AS count FROM delivery_options WHERE is_active GROUP BY delivery_mode ORDER BY delivery_mode`),
+    ]);
+    response.json({
+      sellerVerification: verification.rows,
+      payments: payments.rows,
+      payouts: payouts.rows,
+      activeDeliveryOptions: deliveryOptions.rows,
+      providerIntegrationsEnabled: false,
+    });
+  } catch (error) {
+    console.error('Operations overview request failed', error);
+    response.status(503).json({ error: 'Marketplace operations data is temporarily unavailable.' });
   }
 });
 
