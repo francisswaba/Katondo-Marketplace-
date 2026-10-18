@@ -1,0 +1,19 @@
+{
+  "name": "katondo-marketplace",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @katondo/api & npm run dev --workspace @katondo/web",
+    "dev:api": "npm run dev --workspace @katondo/api",
+    "dev:web": "npm run dev --workspace @katondo/web",
+    "build": "npm run build --workspace @katondo/contracts && npm run build --workspace @katondo/api && npm run build --workspace @katondo/web",
+    "typecheck": "npm run build --workspace @katondo/contracts && npm run typecheck --workspace @katondo/api && npm run typecheck --workspace @katondo/web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
