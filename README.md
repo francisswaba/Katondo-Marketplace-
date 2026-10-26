@@ -7,6 +7,7 @@ Katondo is a Zambia-first marketplace for individual and business sellers, platf
 The initial TypeScript monorepo and a web-to-API catalogue slice are in place. This is an early local-development scaffold, not a production marketplace.
 
 - Product requirements, architecture recommendation, phased roadmap, risks, and Milestone 0 acceptance criteria: [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)
+- Netlify + Railway staging deployment steps and current limitations: [DEPLOYMENT.md](DEPLOYMENT.md)
 - Target clients: iOS, Android, and web
 - Initial market and currency: Zambia, ZMW (deployment-configurable)
 - Development tools: OpenAI Codex as primary; Claude as an alternative
@@ -32,6 +33,7 @@ The API validates signed JWT access tokens against a configured remote JWKS endp
 - `apps/api`: catalogue API and configurable JWT/JWKS authorization boundary.
 - `infra/postgres/migrations`: versioned schema migrations; `infra/postgres/seed.sql` contains development-only catalogue data.
 - `.github/workflows/ci.yml`: install, type-check, and build validation on pushes and pull requests.
+- `netlify.toml` and `railway.toml`: web/API staging deployment configuration.
 
 Payment, payout, delivery, compliance, and livestream providers remain open decisions and are not yet integrated.
 

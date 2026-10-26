@@ -1,0 +1,10 @@
+[build]
+builder = "RAILPACK"
+buildCommand = "npm run build:api"
+
+[deploy]
+startCommand = "npm run start:api"
+preDeployCommand = ["npm run db:migrate:deploy"]
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

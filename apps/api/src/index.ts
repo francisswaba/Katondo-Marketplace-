@@ -7,10 +7,21 @@ import type { Request, Response, NextFunction } from 'express';
 import type { CatalogueResponse } from '@katondo/contracts';
 
 const app = express();
-const port = Number(process.env.API_PORT ?? 4000);
+const port = Number(process.env.PORT ?? process.env.API_PORT ?? 4000);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-app.use(cors());
+const allowedOrigins = new Set(
+  (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
+
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, !origin || allowedOrigins.has(origin));
+  },
+}));
 app.use(express.json());
 
 type UserRole = 'buyer' | 'individual_seller' | 'business_seller' | 'platform_operator' | 'administrator';
