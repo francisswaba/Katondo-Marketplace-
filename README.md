@@ -8,6 +8,8 @@ The initial TypeScript monorepo and a web-to-API catalogue slice are in place. T
 
 - Product requirements, architecture recommendation, phased roadmap, risks, and Milestone 0 acceptance criteria: [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)
 - Netlify + Railway staging deployment steps and current limitations: [DEPLOYMENT.md](DEPLOYMENT.md)
+- Zambia data-protection/hosting readiness checklist: [ZAMBIA_DATA_PROTECTION_READINESS.md](docs/compliance/ZAMBIA_DATA_PROTECTION_READINESS.md)
+- Counsel-review-only privacy and seller-terms drafts: [PRIVACY_NOTICE_DRAFT.md](docs/legal/PRIVACY_NOTICE_DRAFT.md), [SELLER_TERMS_DRAFT.md](docs/legal/SELLER_TERMS_DRAFT.md)
 - Target clients: iOS, Android, and web
 - Initial market and currency: Zambia, ZMW (deployment-configurable)
 - Development tools: OpenAI Codex as primary; Claude as an alternative
@@ -24,7 +26,7 @@ The initial TypeScript monorepo and a web-to-API catalogue slice are in place. T
 
 ## Authentication boundary
 
-The API validates signed JWT access tokens against a configured remote JWKS endpoint. Set `AUTH_ISSUER`, `AUTH_AUDIENCE`, and `AUTH_JWKS_URL` from the selected identity provider before using authenticated routes. Tokens must carry a `sub` and a top-level `roles` array containing Katondo role names. Public catalogue access remains unauthenticated; `/api/account` requires a valid token and `/api/admin/health` additionally requires the `administrator` role. No provider or login screen is configured yet.
+The API has a remote-JWKS JWT validation boundary; no login provider or login screen is selected/configured. Authenticated routes fail closed unless `AUTH_ENABLED=true`, `AUTH_DATA_PROCESSING_APPROVED=true`, and the issuer/audience/JWKS settings are configured. These flags are not approval substitutes: see the Zambia data-protection/hosting checklist before enabling an identity provider or collecting personal data.
 
 ## Current implementation
 
@@ -35,7 +37,7 @@ The API validates signed JWT access tokens against a configured remote JWKS endp
 - `.github/workflows/ci.yml`: install, type-check, and build validation on pushes and pull requests.
 - `netlify.toml` and `railway.toml`: web/API staging deployment configuration.
 
-Payment, payout, delivery, compliance, and livestream providers remain open decisions and are not yet integrated.
+Payment, payout, delivery, identity, compliance, and livestream providers remain open decisions and are not yet integrated. Seller onboarding code exists but is deliberately closed until provider, legal, and hosting gates are satisfied.
 
 ## Proposed local services
 

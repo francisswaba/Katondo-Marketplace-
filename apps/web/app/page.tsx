@@ -26,7 +26,7 @@ export default async function Home() {
         <nav aria-label="Main navigation">
           <a href="#categories">Categories</a>
           <a href="#listings">Explore</a>
-          <a className="sell-link" href="#sell">Start selling <span aria-hidden="true">↗</span></a>
+          <a className="sell-link" href="/sell">Start selling <span aria-hidden="true">↗</span></a>
         </nav>
       </header>
 

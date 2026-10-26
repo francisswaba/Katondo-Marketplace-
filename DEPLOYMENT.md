@@ -29,16 +29,32 @@ This repository now has a deployment path for the web storefront on Netlify and 
 | `AUTH_ISSUER` | Issuer URL for the configured identity provider |
 | `AUTH_AUDIENCE` | Expected API audience, e.g. `katondo-api` |
 | `AUTH_JWKS_URL` | Provider's public JWKS endpoint |
+| `AUTH_ENABLED` | `true` only after the identity release gate passes |
+| `AUTH_DATA_PROCESSING_APPROVED` | `true` only after the approved provider arrangement is recorded |
+| `SELLER_ONBOARDING_ENABLED` | `true` only for the approved onboarding release |
+| `SELLER_DATA_PROCESSING_APPROVED` | `true` only after the data-processing release gate passes |
+| `SELLER_TERMS_VERSION` / `SELLER_TERMS_URL` | Exact published seller terms version and HTTPS URL |
+| `PRIVACY_NOTICE_VERSION` / `PRIVACY_NOTICE_URL` | Exact published privacy notice version and HTTPS URL |
 
-`PORT` is supplied by Railway. `API_PORT` is only a local-development fallback. The public web build also needs `NEXT_PUBLIC_API_URL` set in Netlify.
+`PORT` is supplied by Railway. `API_PORT` is only a local-development fallback. The public web build also needs `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_AUTH_AUTHORITY`, `NEXT_PUBLIC_AUTH_CLIENT_ID`, and the registered callback/logout URLs set in Netlify. Register `https://<site>/auth/callback` as the OIDC callback and `https://<site>/sell` as the post-logout URL. Public OIDC client settings are not client secrets; never place a confidential client secret in a `NEXT_PUBLIC_*` variable.
 
 ## Current staging limitations
 
-- The web storefront and catalogue API are the only functional user-facing slice. Authentication configuration is a boundary only; there is no sign-in/onboarding flow yet.
+- The web storefront, catalogue API, and gated seller sign-in/application flow are implemented. The seller flow remains closed until an approved OIDC provider, published policies, data-processing approval flags, and migration are configured.
 - Payment, payout, seller verification provider, delivery, media storage, and livestream integrations are not implemented. Do not collect real money or promise real fulfilment.
 - The current product listing media fields are not connected to uploads or object storage.
-- The dependency audit remains unresolved at 26 advisories (19 high, 7 moderate, 0 critical); see `SECURITY.md`. Do not treat this as a production security approval.
+- The dependency audit has 5 high advisories, all in Expo SDK 58's mobile CLI/code-signing toolchain; see `SECURITY.md`. The compatible API runtime fix was applied. Native build/signing still needs its own security gate.
 - Complete a controlled staging smoke test after deployment: `/health`, `/api/catalogue`, web catalogue rendering, CORS from the deployed site, and one deploy with a schema migration. Seed data is demo-only.
+
+## Seller onboarding readiness
+
+Use `docs/compliance/SELLER_ONBOARDING_RELEASE.md` for the approval-to-launch sequence and release checks.
+
+The API provides authenticated seller-application and administrator-review endpoints. Applications are deliberately disabled unless all of these Railway variables are reviewed and configured: `SELLER_ONBOARDING_ENABLED=true`, `SELLER_DATA_PROCESSING_APPROVED=true`, `SELLER_TERMS_VERSION`, and `PRIVACY_NOTICE_VERSION`. Do not enable data processing approval until qualified Zambian privacy counsel and the Data Protection Commission have confirmed Katondo's registration, hosting/data-location, cross-border transfer, notice, and retention requirements. The starter form stores only legal name, storefront name, seller type, city, optional business registration number, accepted policy versions, and account contact claims marked verified by the identity provider. It does not collect identity-document images, financial account details, or proof-of-address documents.
+
+The identity provider is not selected. Signed JWTs must use a Zambian-approved provider/hosting arrangement and issue `sub`, an email or phone claim plus its corresponding `email_verified` or `phone_number_verified` claim, and only server-assigned roles. The administrator role must only be granted to trusted staff. Authenticated API routes remain disabled unless `AUTH_ENABLED=true` and `AUTH_DATA_PROCESSING_APPROVED=true`, as well as issuer/audience/JWKS values. Reviewers can move applications into review or reject them; this starter flow cannot mark a seller verified. A verified seller state must not be used as a substitute for provider-backed KYC, PACRA checks, or legal approval where those are required. Existing listings and authentication-provider configuration must be reviewed before enabling seller selling permissions.
+
+See `docs/compliance/ZAMBIA_DATA_PROTECTION_READINESS.md` for the known data map and release gates. `docs/legal/PRIVACY_NOTICE_DRAFT.md` and `docs/legal/SELLER_TERMS_DRAFT.md` are expressly unapproved drafts; do not configure their versions as production policies or present them for acceptance until Zambian counsel approves final, product-accurate documents. Current deployment settings put the API in EU West; take no personal-data collection live until the DPC/transfer and hosting review is resolved.
 
 ## Hosting split
 

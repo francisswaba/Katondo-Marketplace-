@@ -140,6 +140,12 @@ These are planning recommendations, not vendor commitments, legal advice, or con
 
 Build the marketplace operations core independent of provider selection: seller application and verification states; seller storefront and listing creation; image/video metadata with storage adapter; category-backed catalogue search/filter; delivery-option quote snapshot on checkout; provider-neutral payment intent and payout ledger interfaces; immutable audit events. First enable a reviewed Lusaka catalogue, then standard orders, then timed auctions, then live-stream bidding. Production payments, payouts, and dispatch remain feature-flagged until vendor and legal gates are signed off.
 
+### Seller onboarding implementation status
+
+The initial technical slice supports authenticated individual/business applications, minimum contact/profile data, versioned seller-terms and privacy acknowledgements, pending status, and administrator review with an audit trail. Reviewers may mark applications in-review or rejected; this slice cannot mark sellers verified. It intentionally stores no identity document or payout account data. Applications fail closed until the identity provider, counsel-approved terms and privacy notice, data-location/cross-border transfer decision, and `SELLER_DATA_PROCESSING_APPROVED` launch gate are configured. Manual review is workflow scaffolding only; it is not KYC, a PACRA verification, or a legal compliance determination. Do not open seller applications or enable publishing until the jurisdiction-specific verification checklist and rights/retention workflow are approved.
+
+**Current legal/hosting gate:** Railway's API was observed in EU West. For Zambia-first data locality, evaluate Zambia-based managed cloud services and a self-hosted OIDC provider (Keycloak is only a candidate); otherwise obtain counsel/DPC approval for the specific cross-border design before enabling identity or seller data processing. See [Zambia data-protection readiness](docs/compliance/ZAMBIA_DATA_PROTECTION_READINESS.md). Provider marketing claims are due-diligence leads, not compliance proof.
+
 ### Research sources
 
 - [Bank of Zambia — Designation of Payment Systems](https://www.boz.zm/payment-systems/designation-of-payment-systems)

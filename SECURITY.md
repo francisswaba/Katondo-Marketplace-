@@ -1,18 +1,17 @@
 # Dependency security status
 
-Last reviewed: 2026-10-18 (npm audit refreshed immediately before commit)
+Last reviewed: 2026-10-26 (npm audit refreshed during seller-onboarding release preparation)
 
 ## Current audit
 
-The refreshed `npm audit --json` report contains 26 findings: 19 high, 7 moderate, and no critical findings (636 total dependency entries). The earlier Next.js/PostCSS findings were addressed by moving the storefront to Next.js 16.4.2. The remaining report is concentrated in the Expo SDK 58, Metro, React Native, and Xcode tooling dependency chains. npm reports a fix only by downgrading Expo to 44.0.6 or React Native to 0.72.17, which is incompatible with this Expo SDK 58 application; no downgrade was applied.
+The refreshed `npm audit --json` report contains 5 findings: 5 high, no moderate, and no critical findings (639 total dependency entries). A compatible `npm audit fix` upgraded Express to 5.3.0 and body-parser to 2.4.0, removing the API request-body denial-of-service advisory and the earlier moderate mobile-tooling findings. The remaining findings are in Expo SDK 58's CLI/code-signing dependency chain (`@expo/cli`, `@expo/code-signing-certificates`, `node-forge`, and `zod`). npm offers only the incompatible Expo 44.0.6 downgrade for the full chain, so it was not applied.
 
-`npm audit fix --dry-run` proposes no compatible changes. Its forced recommendation to downgrade Expo to 44 and React Native to 0.72 is not acceptable for this SDK 58 application and must not be applied.
+After applying the compatible fixes, npm's remaining forced recommendation is to downgrade Expo to 44.0.6. That is not compatible with this Expo SDK 58 application and must not be applied without a planned mobile-platform migration.
 
 ## Findings without an upstream fix
 
-- `braces` through 3.0.3 has a stack-exhaustion denial-of-service advisory. The current published release is affected and the advisory lists no patched version: [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
 - `node-forge` through 1.4.0 has a high-severity RSA signature-verification advisory. The advisory currently lists no patched release: [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv).
-- `uuid` below 11.1.1 is reported through Expo's `xcode` helper. A direct override was not retained because npm continued resolving the helper to uuid 7; do not claim that item is fixed without confirming the installed tree and a successful audit.
+- The web and API runtime dependency findings reported in the earlier audit are cleared. The remaining findings affect the Expo development/build toolchain; treat native builds and signing as a separate security gate and keep the build environment restricted.
 
 ## Handling
 
