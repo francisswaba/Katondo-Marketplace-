@@ -10,6 +10,7 @@ import {
 } from './access.js';
 import { recordActivity } from './activity.js';
 import { ensurePlatformUser } from './identity.js';
+import { readReleaseReadiness, releaseControlKeys, type ReleaseControlKey } from './release.js';
 
 type Authenticate = (request: AuthenticatedRequest, response: Response, next: NextFunction) => Promise<void>;
 
@@ -204,6 +205,84 @@ export function createAdministrationRouter(pool: Pool, authenticate: Authenticat
     } catch (error) {
       console.error('Activity event request failed', error);
       response.status(503).json({ error: 'Activity events are temporarily unavailable.' });
+    }
+  });
+
+  router.get('/api/admin/release-controls', authenticate, requireAnyRole(['super_administrator', 'auditor']), async (_request, response) => {
+    try {
+      response.json(await readReleaseReadiness(pool));
+    } catch (error) {
+      console.error('Release controls request failed', error);
+      response.status(503).json({ error: 'Release controls are temporarily unavailable.' });
+    }
+  });
+
+  router.put('/api/admin/release-controls/:controlKey', authenticate, requireAnyRole(['super_administrator']), async (request: AuthenticatedRequest, response) => {
+    const controlKey = (Array.isArray(request.params.controlKey) ? request.params.controlKey[0] : request.params.controlKey) as ReleaseControlKey;
+    const status = request.body?.status;
+    const approverAuthority = typeof request.body?.approverAuthority === 'string' ? request.body.approverAuthority.trim() : '';
+    const evidenceReference = typeof request.body?.evidenceReference === 'string' ? request.body.evidenceReference.trim() : '';
+    const notes = typeof request.body?.notes === 'string' ? request.body.notes.trim() : '';
+    const expiresAt = request.body?.expiresAt ? new Date(request.body.expiresAt) : null;
+    if (!releaseControlKeys.includes(controlKey) || !['pending', 'approved', 'revoked'].includes(status)) {
+      response.status(400).json({ error: 'Provide a valid release control and status.' });
+      return;
+    }
+    if (status === 'approved' && (approverAuthority.length < 3 || evidenceReference.length < 5)) {
+      response.status(400).json({ error: 'Approved controls require the approving authority and an evidence reference.' });
+      return;
+    }
+    if (status === 'approved' && expiresAt && expiresAt <= new Date()) {
+      response.status(400).json({ error: 'An approval expiry date must be in the future.' });
+      return;
+    }
+    if (approverAuthority.length > 200 || evidenceReference.length > 500 || notes.length > 1000 || (expiresAt && Number.isNaN(expiresAt.getTime()))) {
+      response.status(400).json({ error: 'Release-control evidence is invalid or too long.' });
+      return;
+    }
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const actorUserId = await ensurePlatformUser(client, request.user!);
+      const previous = await client.query('SELECT status FROM release_controls WHERE control_key = $1 FOR UPDATE', [controlKey]);
+      if (!previous.rowCount) {
+        await client.query('ROLLBACK');
+        response.status(404).json({ error: 'Release control not found.' });
+        return;
+      }
+      await client.query(`
+        UPDATE release_controls SET
+          status = $2,
+          approver_authority = CASE WHEN $2 = 'approved' THEN $3 ELSE NULL END,
+          evidence_reference = CASE WHEN $2 = 'approved' THEN $4 ELSE NULL END,
+          notes = NULLIF($5, ''),
+          approved_by_user_id = CASE WHEN $2 = 'approved' THEN $6 ELSE NULL END,
+          approved_at = CASE WHEN $2 = 'approved' THEN NOW() ELSE NULL END,
+          expires_at = CASE WHEN $2 = 'approved' THEN $7 ELSE NULL END,
+          updated_at = NOW()
+        WHERE control_key = $1
+      `, [controlKey, status, approverAuthority, evidenceReference, notes, actorUserId, expiresAt?.toISOString() ?? null]);
+      await client.query(`
+        INSERT INTO release_control_events (
+          control_key, previous_status, new_status, actor_user_id,
+          approver_authority, evidence_reference, notes
+        ) VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''))
+      `, [controlKey, previous.rows[0].status, status, actorUserId, approverAuthority, evidenceReference, notes]);
+      await client.query(`
+        INSERT INTO audit_events (actor_user_id, event_type, subject_type, details)
+        VALUES ($1, 'release_control.status_changed', 'release_control', $2)
+      `, [actorUserId, { controlKey, previousStatus: previous.rows[0].status, status, evidenceReference }]);
+      await client.query('COMMIT');
+      await recordActivity(pool, request, 'staff', 'staff.release_control_changed', {
+        subjectType: 'release_control', subjectId: controlKey, metadata: { status },
+      });
+      response.json(await readReleaseReadiness(pool));
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Release control update failed', error);
+      response.status(503).json({ error: 'The release control could not be saved.' });
+    } finally {
+      client.release();
     }
   });
 

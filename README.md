@@ -11,6 +11,7 @@ The initial TypeScript monorepo and a web-to-API catalogue slice are in place. T
 - Zambia data-protection/hosting readiness checklist: [ZAMBIA_DATA_PROTECTION_READINESS.md](docs/compliance/ZAMBIA_DATA_PROTECTION_READINESS.md)
 - Counsel-review-only privacy and seller-terms drafts: [PRIVACY_NOTICE_DRAFT.md](docs/legal/PRIVACY_NOTICE_DRAFT.md), [SELLER_TERMS_DRAFT.md](docs/legal/SELLER_TERMS_DRAFT.md)
 - Staff roles, AI service-agent access, and activity controls: [STAFF_AND_AGENT_ACCESS.md](docs/operations/STAFF_AND_AGENT_ACCESS.md)
+- Secure sign-in, policy approval and seller-onboarding release sequence: [SELLER_ONBOARDING_RELEASE.md](docs/compliance/SELLER_ONBOARDING_RELEASE.md)
 - Target clients: iOS, Android, and web
 - Initial market and currency: Zambia, ZMW (deployment-configurable)
 - Development tools: OpenAI Codex as primary; Claude as an alternative
@@ -33,7 +34,7 @@ The web app has shared account settings plus seller and staff OIDC sign-in entry
 
 - `apps/web`: responsive marketplace storefront, shared account settings, seller application flow, and role-specific staff workspace backed by the API.
 - `apps/mobile`: Expo iOS/Android shell backed by the same catalogue API, with secure links to account and staff web surfaces.
-- `apps/api`: catalogue, account preferences, seller/staff operations, AI-agent registry/triage, configurable activity ledger, and JWT/JWKS authorization boundary.
+- `apps/api`: catalogue, account preferences, seller/staff operations, AI-agent registry/triage, configurable activity ledger, auditable release controls, and hardened JWT/JWKS authorization boundary.
 - `infra/postgres/migrations`: versioned schema migrations; `infra/postgres/seed.sql` contains development-only catalogue data.
 - `.github/workflows/ci.yml`: install, type-check, and build validation on pushes and pull requests.
 - `netlify.toml` and `railway.toml`: web/API staging deployment configuration.

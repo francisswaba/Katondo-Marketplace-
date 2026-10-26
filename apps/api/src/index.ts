@@ -16,6 +16,7 @@ import { createAdministrationRouter } from './admin.js';
 import { createAccountRouter } from './account.js';
 import { recordActivity, scheduleActivityRetention } from './activity.js';
 import { ensurePlatformUser, findPlatformUserId } from './identity.js';
+import { readReleaseReadiness } from './release.js';
 
 const app = express();
 const port = Number(process.env.PORT ?? process.env.API_PORT ?? 4000);
@@ -38,15 +39,24 @@ app.use(express.json({ limit: '256kb' }));
 const issuer = process.env.AUTH_ISSUER;
 const audience = process.env.AUTH_AUDIENCE;
 const jwksUrl = process.env.AUTH_JWKS_URL;
-const authenticationEnabled = process.env.AUTH_ENABLED === 'true' && process.env.AUTH_DATA_PROCESSING_APPROVED === 'true';
-const remoteJwks = jwksUrl ? createRemoteJWKSet(new URL(jwksUrl)) : null;
+function validAuthenticationUrl(value: string | undefined) {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return process.env.NODE_ENV !== 'production' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+const authenticationEnabled = process.env.AUTH_ENABLED === 'true'
+  && process.env.AUTH_DATA_PROCESSING_APPROVED === 'true'
+  && validAuthenticationUrl(issuer)
+  && validAuthenticationUrl(jwksUrl);
+const remoteJwks = jwksUrl && validAuthenticationUrl(jwksUrl) ? createRemoteJWKSet(new URL(jwksUrl)) : null;
 const sellerTermsVersion = process.env.SELLER_TERMS_VERSION;
 const sellerTermsUrl = process.env.SELLER_TERMS_URL;
 const privacyNoticeVersion = process.env.PRIVACY_NOTICE_VERSION;
 const privacyNoticeUrl = process.env.PRIVACY_NOTICE_URL;
-const sellerOnboardingEnabled = process.env.SELLER_ONBOARDING_ENABLED === 'true'
-  && process.env.SELLER_DATA_PROCESSING_APPROVED === 'true'
-  && Boolean(sellerTermsVersion && sellerTermsUrl && privacyNoticeVersion && privacyNoticeUrl);
 
 async function authenticate(request: AuthenticatedRequest, response: Response, next: NextFunction) {
   if (!authenticationEnabled || !issuer || !audience || !remoteJwks) {
@@ -62,7 +72,13 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
   }
 
   try {
-    const { payload } = await jwtVerify(token, remoteJwks, { issuer, audience });
+    const { payload } = await jwtVerify(token, remoteJwks, {
+      issuer,
+      audience,
+      algorithms: ['RS256', 'PS256', 'ES256'],
+      requiredClaims: ['sub', 'iat', 'exp'],
+      clockTolerance: 5,
+    });
     if (typeof payload.sub !== 'string') {
       response.status(401).json({ error: 'Token subject is missing.' });
       return;
@@ -115,6 +131,14 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
       : roles.some((role) => role === 'individual_seller' || role === 'business_seller')
         ? 'seller'
         : 'buyer';
+    const authenticationMethods = Array.isArray(payload.amr)
+      ? payload.amr.filter((method): method is string => typeof method === 'string')
+      : [];
+    if (actorType === 'staff' && process.env.AUTH_REQUIRE_MFA_FOR_STAFF === 'true'
+      && !authenticationMethods.some((method) => ['mfa', 'otp', 'hwk'].includes(method))) {
+      response.status(403).json({ error: 'Staff accounts must complete multi-factor authentication.' });
+      return;
+    }
     if (actorType === 'staff') {
       const staffStatus = await pool.query(`
         SELECT sm.status FROM users u
@@ -238,13 +262,19 @@ app.post('/api/activity', authenticate, async (request: AuthenticatedRequest, re
   response.status(202).json({ recorded: true });
 });
 
-app.get('/api/seller/onboarding/config', (_request, response) => {
-  response.json({
-    enabled: sellerOnboardingEnabled,
-    authenticationEnabled,
-    sellerTerms: sellerOnboardingEnabled ? { version: sellerTermsVersion, url: sellerTermsUrl } : null,
-    privacyNotice: sellerOnboardingEnabled ? { version: privacyNoticeVersion, url: privacyNoticeUrl } : null,
-  });
+app.get('/api/seller/onboarding/config', async (_request, response) => {
+  try {
+    const readiness = await readReleaseReadiness(pool);
+    response.json({
+      enabled: readiness.onboardingOpen,
+      authenticationEnabled,
+      sellerTerms: readiness.onboardingOpen ? { version: sellerTermsVersion, url: sellerTermsUrl } : null,
+      privacyNotice: readiness.onboardingOpen ? { version: privacyNoticeVersion, url: privacyNoticeUrl } : null,
+    });
+  } catch (error) {
+    console.error('Seller onboarding release check failed', error);
+    response.json({ enabled: false, authenticationEnabled, sellerTerms: null, privacyNotice: null });
+  }
 });
 
 app.get('/api/seller/onboarding', authenticate, async (request: AuthenticatedRequest, response) => {
@@ -284,8 +314,14 @@ app.post('/api/seller/onboarding', authenticate, async (request: AuthenticatedRe
     return;
   }
 
-  if (!sellerOnboardingEnabled || !sellerTermsVersion || !privacyNoticeVersion) {
-    response.status(503).json({ error: 'Seller applications are not open until identity, privacy, data-location, and seller policy requirements are approved.' });
+  try {
+    const readiness = await readReleaseReadiness(pool);
+    if (!readiness.onboardingOpen || !sellerTermsVersion || !privacyNoticeVersion) {
+      response.status(503).json({ error: 'Seller applications are not open until identity, privacy, data-location, and seller policy requirements are approved.' });
+      return;
+    }
+  } catch {
+    response.status(503).json({ error: 'Seller applications are closed because release approval status is unavailable.' });
     return;
   }
   if (request.body?.acceptSellerTerms !== true || request.body?.acknowledgePrivacyNotice !== true) {

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './styles.css';
 import './account.css';
+import './release.css';
 import ThemeBootstrap from './ThemeBootstrap';
 
 export const metadata: Metadata = {

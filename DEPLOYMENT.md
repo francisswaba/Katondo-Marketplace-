@@ -29,15 +29,17 @@ This repository now has a deployment path for the web storefront on Netlify and 
 | `AUTH_ISSUER` | Issuer URL for the configured identity provider |
 | `AUTH_AUDIENCE` | Expected API audience, e.g. `katondo-api` |
 | `AUTH_JWKS_URL` | Provider's public JWKS endpoint |
+| `AUTH_ACCOUNT_URL` | Provider's approved HTTPS self-service password, recovery and MFA portal |
 | `AUTH_ENABLED` | `true` only after the identity release gate passes |
 | `AUTH_DATA_PROCESSING_APPROVED` | `true` only after the approved provider arrangement is recorded |
+| `AUTH_REQUIRE_MFA_FOR_STAFF` | `true`; staff tokens must include an MFA authentication-method claim |
 | `SELLER_ONBOARDING_ENABLED` | `true` only for the approved onboarding release |
 | `SELLER_DATA_PROCESSING_APPROVED` | `true` only after the data-processing release gate passes |
 | `SELLER_TERMS_VERSION` / `SELLER_TERMS_URL` | Exact published seller terms version and HTTPS URL |
 | `PRIVACY_NOTICE_VERSION` / `PRIVACY_NOTICE_URL` | Exact published privacy notice version and HTTPS URL |
 | `ACTIVITY_IP_HASH_SECRET` | Long random secret required before enabling technical-context collection |
 
-`PORT` is supplied by Railway. `API_PORT` is only a local-development fallback. The public web build also needs `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_AUTH_AUTHORITY`, `NEXT_PUBLIC_AUTH_CLIENT_ID`, `NEXT_PUBLIC_AUTH_ACCOUNT_URL`, and the registered callback/logout URLs set in Netlify. `NEXT_PUBLIC_AUTH_ACCOUNT_URL` must be the provider's HTTPS self-service account page where human users can update passwords, recovery methods, MFA and verified contact details. Register `https://<site>/auth/callback` as the OIDC callback and `https://<site>/sell` as the post-logout URL. Public OIDC client settings are not client secrets; never place a confidential client secret in a `NEXT_PUBLIC_*` variable.
+`PORT` is supplied by Railway. `API_PORT` is only a local-development fallback. The public web build also needs `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_AUTH_AUTHORITY`, `NEXT_PUBLIC_AUTH_CLIENT_ID`, `NEXT_PUBLIC_AUTH_ACCOUNT_URL`, and the registered callback/logout URLs set in Netlify. `AUTH_ACCOUNT_URL` and `NEXT_PUBLIC_AUTH_ACCOUNT_URL` must identify the same provider-controlled HTTPS self-service account page where human users can update passwords, recovery methods, MFA and verified contact details. Register `https://<site>/auth/callback` as the OIDC callback and `https://<site>/sell` as the post-logout URL. Public OIDC client settings are not client secrets; never place a confidential client secret in a `NEXT_PUBLIC_*` variable.
 
 ## Staff and AI access
 
@@ -48,6 +50,8 @@ All human users open `/account` to manage Katondo preferences and follow the pro
 AI agents use separate confidential machine clients. Their tokens must carry `service_agent` and a `client_id` or `azp` matching an active record created by a top administrator in Katondo. Do not put machine client secrets in Netlify, source code, logs, or the agent registry. See `docs/operations/STAFF_AND_AGENT_ACCESS.md`.
 
 Activity collection starts disabled in migration `004_staff_agents_activity.sql`. If technical context is approved, set a long random `ACTIVITY_IP_HASH_SECRET` in Railway before enabling that option. Enabling any category requires the documented purpose, lawful basis, notice, retention and hosting approval for the exact events collected.
+
+Migration `006_release_controls.sql` creates the fail-closed release register. A top administrator records the external approving authority, evidence reference, optional expiry and notes in `/admin`; an auditor can inspect the result. This record does not replace counsel, regulator, security or vendor approval. Seller onboarding opens only when every release record is effective and all environment checks pass. Revoking any record closes new applications immediately.
 
 ## Current staging limitations
 
