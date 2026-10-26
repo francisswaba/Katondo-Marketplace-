@@ -140,6 +140,7 @@ export default function SellerOnboardingClient() {
       <header className="topbar">
         <Link className="wordmark" href="/">katondo<span>.</span></Link>
         <div className="seller-header-actions">
+          {user && <Link className="text-link" href="/account">Account settings</Link>}
           {user && <button className="text-button" type="button" onClick={signOut}>Sign out</button>}
           <Link className="text-link" href="/">Back to marketplace</Link>
         </div>

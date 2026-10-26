@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import './styles.css';
+import './account.css';
+import ThemeBootstrap from './ThemeBootstrap';
 
 export const metadata: Metadata = {
   title: 'Katondo | Zambia’s marketplace',
@@ -9,7 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en-ZM">
-      <body>{children}</body>
+      <body><ThemeBootstrap />{children}</body>
     </html>
   );
 }

@@ -35,8 +35,19 @@ This repository now has a deployment path for the web storefront on Netlify and 
 | `SELLER_DATA_PROCESSING_APPROVED` | `true` only after the data-processing release gate passes |
 | `SELLER_TERMS_VERSION` / `SELLER_TERMS_URL` | Exact published seller terms version and HTTPS URL |
 | `PRIVACY_NOTICE_VERSION` / `PRIVACY_NOTICE_URL` | Exact published privacy notice version and HTTPS URL |
+| `ACTIVITY_IP_HASH_SECRET` | Long random secret required before enabling technical-context collection |
 
-`PORT` is supplied by Railway. `API_PORT` is only a local-development fallback. The public web build also needs `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_AUTH_AUTHORITY`, `NEXT_PUBLIC_AUTH_CLIENT_ID`, and the registered callback/logout URLs set in Netlify. Register `https://<site>/auth/callback` as the OIDC callback and `https://<site>/sell` as the post-logout URL. Public OIDC client settings are not client secrets; never place a confidential client secret in a `NEXT_PUBLIC_*` variable.
+`PORT` is supplied by Railway. `API_PORT` is only a local-development fallback. The public web build also needs `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_AUTH_AUTHORITY`, `NEXT_PUBLIC_AUTH_CLIENT_ID`, `NEXT_PUBLIC_AUTH_ACCOUNT_URL`, and the registered callback/logout URLs set in Netlify. `NEXT_PUBLIC_AUTH_ACCOUNT_URL` must be the provider's HTTPS self-service account page where human users can update passwords, recovery methods, MFA and verified contact details. Register `https://<site>/auth/callback` as the OIDC callback and `https://<site>/sell` as the post-logout URL. Public OIDC client settings are not client secrets; never place a confidential client secret in a `NEXT_PUBLIC_*` variable.
+
+## Staff and AI access
+
+Employees open `/admin` and use the same OIDC callback. The provider must issue server-managed staff roles; bootstrap the first `super_administrator` in the identity provider, never through a public registration flow. Require verified work contact details and MFA. Other supported roles are `administrator`, `seller_reviewer`, `customer_support`, `finance_operator`, `fulfilment_operator`, `platform_operator`, and `auditor`.
+
+All human users open `/account` to manage Katondo preferences and follow the provider's secure account-management link for password, recovery, MFA and contact changes. Katondo must never receive or store current or replacement passwords. AI agents have no personal account page; rotate their confidential credentials in the identity provider or secret manager.
+
+AI agents use separate confidential machine clients. Their tokens must carry `service_agent` and a `client_id` or `azp` matching an active record created by a top administrator in Katondo. Do not put machine client secrets in Netlify, source code, logs, or the agent registry. See `docs/operations/STAFF_AND_AGENT_ACCESS.md`.
+
+Activity collection starts disabled in migration `004_staff_agents_activity.sql`. If technical context is approved, set a long random `ACTIVITY_IP_HASH_SECRET` in Railway before enabling that option. Enabling any category requires the documented purpose, lawful basis, notice, retention and hosting approval for the exact events collected.
 
 ## Current staging limitations
 

@@ -26,6 +26,7 @@ export default async function Home() {
         <nav aria-label="Main navigation">
           <a href="#categories">Categories</a>
           <a href="#listings">Explore</a>
+          <a href="/account">Account</a>
           <a className="sell-link" href="/sell">Start selling <span aria-hidden="true">↗</span></a>
         </nav>
       </header>
@@ -67,7 +68,7 @@ export default async function Home() {
         </div> : <div className="catalogue-empty"><div className="empty-symbol">✳</div><h3>Your next great find is around the corner.</h3><p>{catalogue ? 'New listings will appear here.' : 'Connect the local API and database to see the starter catalogue.'}</p></div>}
       </section>
 
-      <footer><a className="wordmark" href="/">katondo<span>.</span></a><p>Good finds. Good people. Right here.</p><span>Made for Zambia&nbsp; ✳</span></footer>
+      <footer><a className="wordmark" href="/">katondo<span>.</span></a><p>Good finds. Good people. Right here.</p><span>Made for Zambia&nbsp; ✳ &nbsp;·&nbsp; <a className="staff-link" href="/account">Account</a>&nbsp; · &nbsp;<a className="staff-link" href="/admin">Staff</a></span></footer>
     </main>
   );
 }

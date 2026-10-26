@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CatalogueResponse, Listing } from '@katondo/contracts';
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+const webUrl = (process.env.EXPO_PUBLIC_WEB_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 
 function formatPrice(priceMinor: number, currency: string) {
   return new Intl.NumberFormat('en-ZM', { style: 'currency', currency }).format(priceMinor / 100);
@@ -45,6 +46,8 @@ export default function MarketplaceHome() {
           <Text style={styles.eyebrow}>YOUR MARKETPLACE, REIMAGINED</Text>
           <Text style={styles.heading}>Good things find new homes.</Text>
           <Text style={styles.subheading}>Discover one-of-a-kind finds from people and businesses across Zambia.</Text>
+          <Pressable accessibilityRole="link" style={styles.accountButton} onPress={() => Linking.openURL(`${webUrl}/account`)}><Text style={styles.accountButtonText}>Account settings · Password, security and preferences ↗</Text></Pressable>
+          <Pressable accessibilityRole="link" style={styles.staffButton} onPress={() => Linking.openURL(`${webUrl}/admin`)}><Text style={styles.staffButtonText}>Katondo team · Open staff workspace ↗</Text></Pressable>
           <Text style={styles.sectionTitle}>Browse categories</Text>
           {catalogue?.categories.map((category) => <Text key={category.id} style={styles.categoryPill}>{category.name}  ↗</Text>)}
           <Text style={styles.sectionTitle}>Picked for you</Text>
@@ -65,6 +68,10 @@ const styles = StyleSheet.create({
   eyebrow: { color: '#77857c', fontSize: 10, fontWeight: '700', letterSpacing: 1.4, marginTop: 36 },
   heading: { color: '#213c30', fontSize: 40, fontWeight: '600', letterSpacing: -1.8, lineHeight: 45, marginTop: 13, maxWidth: 340 },
   subheading: { color: '#748078', fontSize: 15, lineHeight: 23, marginTop: 13, maxWidth: 340 },
+  accountButton: { alignSelf: 'flex-start', backgroundColor: '#214e3c', borderRadius: 7, marginTop: 19, paddingHorizontal: 13, paddingVertical: 11 },
+  accountButtonText: { color: '#ffffff', fontSize: 11, fontWeight: '700' },
+  staffButton: { alignSelf: 'flex-start', borderColor: '#cdd8cf', borderRadius: 7, borderWidth: 1, marginTop: 9, paddingHorizontal: 13, paddingVertical: 10 },
+  staffButtonText: { color: '#214e3c', fontSize: 11, fontWeight: '700' },
   sectionTitle: { color: '#1b2924', fontSize: 21, fontWeight: '700', letterSpacing: -0.5, marginTop: 35, marginBottom: 15 },
   categoryPill: { alignSelf: 'flex-start', overflow: 'hidden', backgroundColor: '#e7eee4', borderRadius: 18, color: '#34483d', fontSize: 13, fontWeight: '600', marginBottom: 9, paddingHorizontal: 15, paddingVertical: 10 },
   card: { marginBottom: 21 },

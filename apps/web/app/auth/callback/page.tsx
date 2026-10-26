@@ -15,7 +15,13 @@ export default function AuthCallbackPage() {
     }
 
     manager.signinRedirectCallback()
-      .then(() => window.location.replace('/sell'))
+      .then((user) => {
+        const requestedPath = user.state && typeof user.state === 'object' && 'returnTo' in user.state
+          ? (user.state as { returnTo?: unknown }).returnTo
+          : null;
+        const returnTo = requestedPath === '/admin' || requestedPath === '/sell' || requestedPath === '/account' ? requestedPath : '/';
+        window.location.replace(returnTo);
+      })
       .catch(() => setError('We could not complete sign-in. Please return and try again.'));
   }, []);
 
@@ -25,8 +31,8 @@ export default function AuthCallbackPage() {
       <div className="callback-card" role="status">
         <span className="callback-mark">✳</span>
         <h1>{error ? 'Sign-in needs attention' : 'Completing sign-in'}</h1>
-        <p>{error || 'Please wait while we securely return you to your seller application.'}</p>
-        {error && <Link className="primary-button" href="/sell">Return to seller application</Link>}
+        <p>{error || 'Please wait while we securely return you to Katondo.'}</p>
+        {error && <Link className="primary-button" href="/">Return to Katondo</Link>}
       </div>
     </main>
   );

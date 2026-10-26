@@ -14,7 +14,8 @@ Katondo is a multi-vendor marketplace for buyers in Zambia, combining standard p
 - **Individual seller:** lists personal items and manages orders and seller-arranged delivery options.
 - **Registered business seller:** operates a storefront, lists inventory, manages staff access where enabled, orders, fulfilment, and payouts.
 - **Platform operator:** lists and sells platform-owned inventory alongside third-party inventory.
-- **Administrator/support:** verifies sellers, manages catalogue and categories, reviews reports, handles disputes, configures fees and delivery, and monitors marketplace health.
+- **Administrator/support:** uses a role-specific staff workspace to verify sellers, manage catalogue and categories, review reports, handle disputes, configure fees and delivery, and monitor marketplace health. Top administrators alone manage behavioural-data collection and AI service-agent access.
+- **AI service agent:** uses a non-human machine identity with an explicit allowlist of read or triage permissions. Agent recommendations require human review; agents cannot approve, reject or verify sellers.
 
 ## 3. Product scope and requirements
 
@@ -28,7 +29,7 @@ Katondo is a multi-vendor marketplace for buyers in Zambia, combining standard p
 
 ### Shopping, payments, and orders
 
-- Buyer accounts support profile, saved addresses, order history, preferences, and account security.
+- Every human account has settings for provider-managed password, recovery, MFA and verified contact updates, plus Katondo-managed appearance, language/region and role-appropriate notification preferences. Buyer accounts additionally support profile, saved addresses and order history.
 - Cart and checkout can contain items from multiple sellers while calculating each seller's fulfilment, shipping, fees, and order state accurately.
 - Currency is selected from the active deployment configuration. Zambia launch defaults to ZMW; amounts must use integer minor units and explicit currency codes.
 - Integrate payment providers that support Zambia after provider, settlement, refund, and mobile-money/card coverage are confirmed. Do not store raw payment credentials.

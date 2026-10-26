@@ -10,6 +10,7 @@ The initial TypeScript monorepo and a web-to-API catalogue slice are in place. T
 - Netlify + Railway staging deployment steps and current limitations: [DEPLOYMENT.md](DEPLOYMENT.md)
 - Zambia data-protection/hosting readiness checklist: [ZAMBIA_DATA_PROTECTION_READINESS.md](docs/compliance/ZAMBIA_DATA_PROTECTION_READINESS.md)
 - Counsel-review-only privacy and seller-terms drafts: [PRIVACY_NOTICE_DRAFT.md](docs/legal/PRIVACY_NOTICE_DRAFT.md), [SELLER_TERMS_DRAFT.md](docs/legal/SELLER_TERMS_DRAFT.md)
+- Staff roles, AI service-agent access, and activity controls: [STAFF_AND_AGENT_ACCESS.md](docs/operations/STAFF_AND_AGENT_ACCESS.md)
 - Target clients: iOS, Android, and web
 - Initial market and currency: Zambia, ZMW (deployment-configurable)
 - Development tools: OpenAI Codex as primary; Claude as an alternative
@@ -26,13 +27,13 @@ The initial TypeScript monorepo and a web-to-API catalogue slice are in place. T
 
 ## Authentication boundary
 
-The API has a remote-JWKS JWT validation boundary; no login provider or login screen is selected/configured. Authenticated routes fail closed unless `AUTH_ENABLED=true`, `AUTH_DATA_PROCESSING_APPROVED=true`, and the issuer/audience/JWKS settings are configured. These flags are not approval substitutes: see the Zambia data-protection/hosting checklist before enabling an identity provider or collecting personal data.
+The web app has shared account settings plus seller and staff OIDC sign-in entry points, and the API validates signed tokens through remote JWKS. Human password, recovery, MFA and verified-contact changes are delegated to the provider's self-service account portal; Katondo never stores passwords. No provider is selected/configured. Authenticated routes fail closed unless `AUTH_ENABLED=true`, `AUTH_DATA_PROCESSING_APPROVED=true`, and the issuer/audience/JWKS settings are configured. These flags are not approval substitutes: see the Zambia data-protection/hosting checklist before enabling an identity provider or collecting personal data.
 
 ## Current implementation
 
-- `apps/web`: responsive marketplace storefront backed by the catalogue API.
-- `apps/mobile`: Expo iOS/Android shell backed by the same catalogue API, using platform system typography.
-- `apps/api`: catalogue API and configurable JWT/JWKS authorization boundary.
+- `apps/web`: responsive marketplace storefront, shared account settings, seller application flow, and role-specific staff workspace backed by the API.
+- `apps/mobile`: Expo iOS/Android shell backed by the same catalogue API, with secure links to account and staff web surfaces.
+- `apps/api`: catalogue, account preferences, seller/staff operations, AI-agent registry/triage, configurable activity ledger, and JWT/JWKS authorization boundary.
 - `infra/postgres/migrations`: versioned schema migrations; `infra/postgres/seed.sql` contains development-only catalogue data.
 - `.github/workflows/ci.yml`: install, type-check, and build validation on pushes and pull requests.
 - `netlify.toml` and `railway.toml`: web/API staging deployment configuration.
