@@ -13,7 +13,7 @@
     "dev:mobile": "npm run dev --workspace @katondo/mobile",
     "build:api": "npm run build --workspace @katondo/contracts && npm run build --workspace @katondo/api",
     "start:api": "npm run start --workspace @katondo/api",
-    "build:web": "npm run build --workspace @katondo/contracts && npm run build --workspace @katondo/web",
+    "build:web": "npm run build --workspace @katondo/web",
     "db:migrate": "npm run db:migrate --workspace @katondo/api",
     "db:migrate:deploy": "npm run db:migrate:deploy --workspace @katondo/api",
     "db:seed": "npm run db:seed --workspace @katondo/api",

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
+    "prebuild": "npm run build --workspace @katondo/contracts",
     "build": "next build",
     "typecheck": "tsc --noEmit"
   },
