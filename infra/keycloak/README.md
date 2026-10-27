@@ -22,7 +22,9 @@ The realm import is deliberately safe for preparation:
 
 ## Zambia production configuration
 
-Build this directory as the container image and provide secrets through the hosting platform, not source control:
+The `Keycloak image` GitHub Actions workflow publishes this directory to `ghcr.io/francisswaba/katondo-keycloak` with immutable commit-SHA and `latest` tags. Deploy an immutable SHA tag to production. Make the GitHub package public before using it without registry credentials, or configure SwiftCloud's private-registry fields with a read-only token. Never place a registry token in the repository.
+
+Provide runtime secrets through the hosting platform, not source control:
 
 | Variable | Production value |
 | --- | --- |
