@@ -28,7 +28,7 @@ The initial TypeScript monorepo and a web-to-API catalogue slice are in place. T
 
 ## Authentication boundary
 
-The web app has shared account settings plus seller and staff OIDC sign-in entry points, and the API validates signed tokens through remote JWKS. Human password, recovery, MFA and verified-contact changes are delegated to the provider's self-service account portal; Katondo never stores passwords. No provider is selected/configured. Authenticated routes fail closed unless `AUTH_ENABLED=true`, `AUTH_DATA_PROCESSING_APPROVED=true`, and the issuer/audience/JWKS settings are configured. These flags are not approval substitutes: see the Zambia data-protection/hosting checklist before enabling an identity provider or collecting personal data.
+The web app has shared account settings plus seller and staff OIDC sign-in entry points, and the API validates signed tokens through remote JWKS. Human password, recovery, MFA and verified-contact changes are delegated to Keycloak's self-service account portal; Katondo never stores passwords. A Zambia-hosted Keycloak deployment pattern is scaffolded in `infra/keycloak`, but no production hosting vendor or account is configured. Authenticated routes fail closed unless `AUTH_ENABLED=true`, `AUTH_DATA_PROCESSING_APPROVED=true`, and the issuer/audience/JWKS settings are configured. These flags are not approval substitutes: see the Zambia data-protection/hosting checklist before enabling identity or collecting personal data.
 
 ## Current implementation
 

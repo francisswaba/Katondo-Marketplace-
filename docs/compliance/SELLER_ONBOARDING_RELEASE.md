@@ -11,7 +11,7 @@ This plan applies after actual written approvals. A hypothetical approval does n
 
 ## 2. Configure identity and operations
 
-- Select and contract an OIDC provider under the approved data-processing arrangement. Configure issuer, API audience, JWKS, verified contact claims, MFA and account recovery.
+- Contract a Zambia hosting provider for the selected Katondo-managed Keycloak and PostgreSQL deployment. Verify the location of primary data, replicas, backups, logs and support access, then configure issuer, API audience, JWKS, verified contact claims, MFA, SMTP and account recovery.
 - Assign the `administrator` role only through a restricted staff process. Test that buyer tokens cannot call admin routes; review role issuance and revocation.
 - Use separate staging and production identity clients, databases and policy versions. Store credentials in service secret stores.
 - Configure `AUTH_ISSUER`, `AUTH_AUDIENCE`, `AUTH_JWKS_URL`, `AUTH_ACCOUNT_URL`, `AUTH_REQUIRE_MFA_FOR_STAFF=true`, `AUTH_ENABLED=true`, and `AUTH_DATA_PROCESSING_APPROVED=true` in the approved environment. Verify `/api/account` rejects missing, expired, wrong-issuer, wrong-audience and disallowed-algorithm tokens, and that staff tokens without an MFA method are rejected.

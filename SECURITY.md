@@ -1,17 +1,17 @@
 # Dependency security status
 
-Last reviewed: 2026-10-26 (npm audit refreshed during seller-onboarding release preparation)
+Last reviewed: 2026-10-27 (npm audit refreshed before the Zambia-hosted identity scaffold deployment)
 
 ## Current audit
 
-The refreshed `npm audit --json` report contains 5 findings: 5 high, no moderate, and no critical findings (639 total dependency entries). A compatible `npm audit fix` upgraded Express to 5.3.0 and body-parser to 2.4.0, removing the API request-body denial-of-service advisory and the earlier moderate mobile-tooling findings. The remaining findings are in Expo SDK 58's CLI/code-signing dependency chain (`@expo/cli`, `@expo/code-signing-certificates`, `node-forge`, and `zod`). npm offers only the incompatible Expo 44.0.6 downgrade for the full chain, so it was not applied.
+The refreshed `npm audit` report contains 3 high findings, no moderate findings, and no critical findings. A compatible `npm audit fix` upgraded `node-forge` from 1.4.0 to 1.4.1 and removed its RSA signature-verification advisory. The remaining findings concern `zod` through Expo SDK 58's local CLI dependency chain (`expo` and `@expo/cli`).
 
-After applying the compatible fixes, npm's remaining forced recommendation is to downgrade Expo to 44.0.6. That is not compatible with this Expo SDK 58 application and must not be applied without a planned mobile-platform migration.
+After applying compatible fixes, npm's forced recommendation is to install Expo 54.0.38. That is a breaking SDK change from this Expo SDK 58 application and must not be applied without a planned mobile-platform migration. The current latest Expo 58.0.19 and `@expo/cli` 58.1.15 still declare `zod` `^3.25.76`, while the advisory reports a fix in Zod 4.6.6; a transitive major-version override could break the CLI and was not applied.
 
 ## Findings without an upstream fix
 
-- `node-forge` through 1.4.0 has a high-severity RSA signature-verification advisory. The advisory currently lists no patched release: [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv).
-- The web and API runtime dependency findings reported in the earlier audit are cleared. The remaining findings affect the Expo development/build toolchain; treat native builds and signing as a separate security gate and keep the build environment restricted.
+- Zod versions before 4.6.6 have a high-severity memory-exhaustion advisory for oversized constrained collections: [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5). The vulnerable package is transitive through the Expo CLI used for local mobile exports.
+- The web and API runtime dependency findings reported in earlier audits are cleared. The remaining findings affect the Expo development/build toolchain; treat native builds and signing as a separate security gate and keep the build environment restricted.
 
 ## Handling
 
