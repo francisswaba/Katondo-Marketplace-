@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import type { User } from 'oidc-client-ts';
+import type { MarketConfiguration } from '@katondo/contracts';
 import { getUserManager, isCurrentUser, isOidcConfigured } from '../../lib/oidc';
 
 type Preferences = {
-  locale: 'en-ZM' | 'en';
+  locale: string;
   theme: 'system' | 'light' | 'dark';
   marketingEmails: boolean;
   marketplaceUpdates: boolean;
@@ -19,8 +20,17 @@ type Preferences = {
 
 type AccountPayload = {
   account: { displayName?: string; email?: string; phone?: string; roles: string[] };
+  market: MarketConfiguration;
   preferences: Preferences;
 };
+
+function localeLabel(locale: string) {
+  try {
+    return new Intl.DisplayNames([locale, 'en'], { type: 'language' }).of(locale) || locale;
+  } catch {
+    return locale;
+  }
+}
 
 const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
 const accountUrl = process.env.NEXT_PUBLIC_AUTH_ACCOUNT_URL;
@@ -122,7 +132,7 @@ export default function AccountSettingsClient() {
       </section>
       <form className="account-preferences" onSubmit={save}>
         <div className="admin-section-title"><div><p className="eyebrow">PREFERENCES</p><h2>Marketplace experience</h2></div><span>Applied to your account</span></div>
-        <div className="preference-selects"><label>Language and region<select value={preferences.locale} onChange={(event) => updatePreference('locale', event.target.value as Preferences['locale'])}><option value="en-ZM">English · Zambia</option><option value="en">English · International</option></select></label><label>Appearance<select value={preferences.theme} onChange={(event) => updatePreference('theme', event.target.value as Preferences['theme'])}><option value="system">Use device setting</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+        <div className="preference-selects"><label>Language and region<select value={preferences.locale} onChange={(event) => updatePreference('locale', event.target.value)}>{data.market.supportedLocales.map((locale) => <option value={locale} key={locale}>{localeLabel(locale)}</option>)}</select></label><label>Appearance<select value={preferences.theme} onChange={(event) => updatePreference('theme', event.target.value as Preferences['theme'])}><option value="system">Use device setting</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
         <div className="preference-list">
           <PreferenceRow label="Marketplace updates" detail="Important product and service announcements." checked={preferences.marketplaceUpdates} onChange={(value) => updatePreference('marketplaceUpdates', value)} />
           <PreferenceRow label="Offers and discovery" detail="Optional promotions, recommendations and marketplace news." checked={preferences.marketingEmails} onChange={(value) => updatePreference('marketingEmails', value)} />

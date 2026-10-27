@@ -8,10 +8,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "zm.katondo.marketplace"
+      "bundleIdentifier": "com.katondo.marketplace"
     },
     "android": {
-      "package": "zm.katondo.marketplace"
+      "package": "com.katondo.marketplace"
     },
     "plugins": ["expo-router"],
     "experiments": {

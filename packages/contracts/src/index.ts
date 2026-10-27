@@ -17,7 +17,16 @@ export type Listing = {
   quantity: number;
 };
 
+export type MarketConfiguration = {
+  countryCode: string;
+  countryName: string;
+  currency: string;
+  locale: string;
+  supportedLocales: string[];
+};
+
 export type CatalogueResponse = {
+  market: MarketConfiguration;
   categories: Category[];
   listings: Listing[];
 };

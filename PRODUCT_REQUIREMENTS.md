@@ -1,12 +1,13 @@
 # Katondo Marketplace — Product Requirements
 
 **Status:** Planning baseline  
-**Launch market:** Zambia  
+**Platform scope:** Global, configured and released country by country
+**First launch market:** Zambia
 **Release approach:** Full marketplace capability delivered and tested in controlled phases
 
 ## 1. Product vision
 
-Katondo is a multi-vendor marketplace for buyers in Zambia, combining standard product listings, seller storefronts, platform-owned inventory, timed auctions, and live shopping with live bidding. It will serve customers through iOS, Android, and web experiences. The platform will support local operations first while keeping country, currency, payment, delivery, and compliance rules configurable for later deployments.
+Katondo is a global multi-vendor marketplace combining standard product listings, seller storefronts, platform-owned inventory, timed auctions, and live shopping with live bidding. It will serve customers through iOS, Android, and web experiences. Countries are enabled as isolated operating profiles with their own currency, locale, payments, delivery, policies, release approvals, and compliance controls. Zambia is the first launch profile.
 
 ## 2. Users and roles
 
@@ -69,7 +70,8 @@ Katondo is a multi-vendor marketplace for buyers in Zambia, combining standard p
 - Reliability: payment/order transitions and auction outcomes must be idempotent and recoverable; background jobs need retries and dead-letter visibility.
 - Performance: fast catalogue browsing on mobile networks; media is resized/transcoded and delivered through a CDN.
 - Observability: structured logs, metrics, traces, crash reporting, payment reconciliation, and actionable alerts without exposing sensitive data.
-- Portability: deployment country, currency, tax/fee rules, supported payment methods, delivery coverage, and locale are configuration, not scattered constants.
+- Portability: deployment country, currency, tax/fee rules, supported payment methods, delivery coverage, locale, policies, and approvals are configuration, not scattered constants.
+- Country isolation: seller applications, listings, provider configuration, and release approvals are scoped to a market; authorization in one country never enables another.
 - Data: backups, restore drills, migration discipline, and documented retention/deletion policies.
 
 ## 5. Recommended architecture

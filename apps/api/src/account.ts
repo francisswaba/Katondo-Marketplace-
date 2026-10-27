@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 import { staffRoles, type AuthenticatedRequest } from './access.js';
 import { recordActivity } from './activity.js';
 import { ensurePlatformUser } from './identity.js';
+import { getMarketConfiguration } from './market.js';
 
 type Authenticate = (request: AuthenticatedRequest, response: Response, next: NextFunction) => Promise<void>;
 
@@ -34,6 +35,7 @@ function preferenceResponse(row: Record<string, unknown>, roles: string[]) {
 
 export function createAccountRouter(pool: Pool, authenticate: Authenticate) {
   const router = Router();
+  const market = getMarketConfiguration();
 
   router.get('/api/account/settings', authenticate, async (request: AuthenticatedRequest, response) => {
     if (request.user?.actorType === 'ai_agent') {
@@ -43,10 +45,10 @@ export function createAccountRouter(pool: Pool, authenticate: Authenticate) {
     try {
       const userId = await ensurePlatformUser(pool, request.user!);
       const result = await pool.query(`
-        INSERT INTO user_preferences (user_id) VALUES ($1)
+        INSERT INTO user_preferences (user_id, locale) VALUES ($1, $2)
         ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
         RETURNING *
-      `, [userId]);
+      `, [userId, market.locale]);
       response.json({
         account: {
           displayName: request.user?.displayName,
@@ -54,6 +56,7 @@ export function createAccountRouter(pool: Pool, authenticate: Authenticate) {
           phone: request.user?.phoneVerified ? request.user.phone : null,
           roles: request.user?.roles ?? [],
         },
+        market,
         preferences: preferenceResponse(result.rows[0], request.user?.roles ?? []),
       });
     } catch (error) {
@@ -71,7 +74,7 @@ export function createAccountRouter(pool: Pool, authenticate: Authenticate) {
     const locale = request.body?.locale;
     const theme = request.body?.theme;
     const booleanFields = ['marketingEmails', 'marketplaceUpdates', 'orderUpdates', 'savedSearchAlerts', 'sellerActivityAlerts', 'staffOperationalAlerts'] as const;
-    if (!['en-ZM', 'en'].includes(locale) || !['system', 'light', 'dark'].includes(theme)
+    if (!market.supportedLocales.includes(locale) || !['system', 'light', 'dark'].includes(theme)
       || booleanFields.some((field) => typeof request.body?.[field] !== 'boolean')) {
       response.status(400).json({ error: 'Provide valid account preference values.' });
       return;

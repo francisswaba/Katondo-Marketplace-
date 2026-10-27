@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
+import { getMarketConfiguration } from './market.js';
 
 type DatabaseClient = Pool | PoolClient;
 
@@ -23,12 +24,18 @@ function isHttpsUrl(value: string | undefined) {
 }
 
 export async function readReleaseReadiness(database: DatabaseClient) {
+  const market = getMarketConfiguration();
+  await database.query(`
+    INSERT INTO release_controls (country_code, control_key)
+    SELECT $1, unnest($2::text[])
+    ON CONFLICT (country_code, control_key) DO NOTHING
+  `, [market.countryCode, releaseControlKeys]);
   const result = await database.query(`
-    SELECT control_key, status, approver_authority, evidence_reference, notes,
+    SELECT country_code, control_key, status, approver_authority, evidence_reference, notes,
            approved_at, expires_at, updated_at,
            status = 'approved' AND (expires_at IS NULL OR expires_at > NOW()) AS effective
-    FROM release_controls ORDER BY control_key
-  `);
+    FROM release_controls WHERE country_code = $1 ORDER BY control_key
+  `, [market.countryCode]);
   const controls = Object.fromEntries(result.rows.map((row) => [row.control_key, row]));
   const requiredApprovals = releaseControlKeys.every((key) => controls[key]?.effective === true);
   const checks = {
@@ -43,6 +50,7 @@ export async function readReleaseReadiness(database: DatabaseClient) {
     requiredApprovals,
   };
   return {
+    market,
     controls: result.rows,
     checks,
     onboardingOpen: Object.values(checks).every(Boolean),

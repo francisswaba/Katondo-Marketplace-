@@ -1,4 +1,5 @@
 import type { CatalogueResponse } from '@katondo/contracts';
+import { fallbackMarket, formatMoney } from '../lib/market';
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -12,12 +13,9 @@ async function getCatalogue(): Promise<CatalogueResponse | null> {
   }
 }
 
-function formatPrice(priceMinor: number, currency: string) {
-  return new Intl.NumberFormat('en-ZM', { style: 'currency', currency }).format(priceMinor / 100);
-}
-
 export default async function Home() {
   const catalogue = await getCatalogue();
+  const market = catalogue?.market ?? fallbackMarket();
 
   return (
     <main className="page-shell">
@@ -35,14 +33,14 @@ export default async function Home() {
         <div className="hero-copy">
           <p className="eyebrow"><span className="live-dot" /> YOUR MARKETPLACE, REIMAGINED</p>
           <h1>Good things<br />find <em>new homes.</em></h1>
-          <p className="hero-description">Discover one-of-a-kind finds from people and businesses across Zambia.</p>
+          <p className="hero-description">Discover one-of-a-kind finds from people and businesses across {market.countryName}.</p>
           <a className="primary-button" href="#listings">Explore the marketplace <span aria-hidden="true">→</span></a>
         </div>
         <div className="hero-art" aria-label="Illustration of a curated marketplace">
           <div className="sun-disc" />
           <div className="art-card card-back"><span>LOCAL FINDS</span><b>Made to<br />be found.</b></div>
           <div className="art-card card-front"><span className="product-orbit">✳</span><span className="art-caption">A little more<br />you.</span></div>
-          <div className="art-stamp">SHOP<br />ZAMBIA</div>
+          <div className="art-stamp">SHOP<br />{market.countryCode}</div>
         </div>
       </section>
 
@@ -62,13 +60,13 @@ export default async function Home() {
           {catalogue.listings.map((listing, index) => (
             <article className="listing-card" key={listing.id}>
               <div className={`listing-image image-${index % 4}`}><span className="image-label">{listing.condition}</span><span className="image-glyph">{['◈', '◌', '✳', '⌂'][index % 4]}</span><button className="save-button" aria-label={`Save ${listing.title}`}>♡</button></div>
-              <p className="listing-category">{listing.categoryName}</p><h3>{listing.title}</h3><div className="listing-meta"><span>{listing.sellerName}</span><strong>{formatPrice(listing.priceMinor, listing.currency)}</strong></div>
+              <p className="listing-category">{listing.categoryName}</p><h3>{listing.title}</h3><div className="listing-meta"><span>{listing.sellerName}</span><strong>{formatMoney(listing.priceMinor, listing.currency, market.locale)}</strong></div>
             </article>
           ))}
         </div> : <div className="catalogue-empty"><div className="empty-symbol">✳</div><h3>Your next great find is around the corner.</h3><p>{catalogue ? 'New listings will appear here.' : 'Connect the local API and database to see the starter catalogue.'}</p></div>}
       </section>
 
-      <footer><a className="wordmark" href="/">katondo<span>.</span></a><p>Good finds. Good people. Right here.</p><span>Made for Zambia&nbsp; ✳ &nbsp;·&nbsp; <a className="staff-link" href="/account">Account</a>&nbsp; · &nbsp;<a className="staff-link" href="/admin">Staff</a></span></footer>
+      <footer><a className="wordmark" href="/">katondo<span>.</span></a><p>Good finds. Good people. Right here.</p><span>Made for {market.countryName}&nbsp; ✳ &nbsp;·&nbsp; <a className="staff-link" href="/account">Account</a>&nbsp; · &nbsp;<a className="staff-link" href="/admin">Staff</a></span></footer>
     </main>
   );
 }

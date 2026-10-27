@@ -33,6 +33,7 @@ type SellerApplication = {
   legal_name: string;
   business_registration_number?: string;
   city: string;
+  country_code: string;
   accepted_at: string;
   email?: string;
   phone?: string;
@@ -332,7 +333,7 @@ export default function AdminWorkspaceClient() {
 
       {session.capabilities.viewActivity && <section className="admin-section"><div className="admin-section-title"><div><p className="eyebrow">ACCOUNTABILITY</p><h2>Recent activity</h2></div><span>Latest 50 events</span></div><div className="event-table">{events.map((event) => <article key={event.id}><time>{new Date(event.created_at).toLocaleString('en-ZM')}</time><strong>{event.event_name}</strong><span>{friendlyRole(event.actor_type)} · {event.category}</span><small>{event.route || event.subject_type || 'Recorded event'}</small></article>)}{events.length === 0 && <div className="admin-empty">No activity events have been collected.</div>}</div></section>}
 
-      <footer><Link className="wordmark" href="/">katondo<span>.</span></Link><p>Staff access is role based and audited.</p><span>Operations · Zambia</span></footer>
+      <footer><Link className="wordmark" href="/">katondo<span>.</span></Link><p>Staff access is role based and audited.</p><span>Multi-market operations</span></footer>
     </main>
   );
 }

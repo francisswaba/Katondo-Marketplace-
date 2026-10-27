@@ -11,6 +11,7 @@ import {
 import { recordActivity } from './activity.js';
 import { ensurePlatformUser } from './identity.js';
 import { readReleaseReadiness, releaseControlKeys, type ReleaseControlKey } from './release.js';
+import { getMarketConfiguration } from './market.js';
 
 type Authenticate = (request: AuthenticatedRequest, response: Response, next: NextFunction) => Promise<void>;
 
@@ -31,6 +32,7 @@ function activitySettings(row: Record<string, unknown>) {
 
 export function createAdministrationRouter(pool: Pool, authenticate: Authenticate) {
   const router = Router();
+  const market = getMarketConfiguration();
 
   router.get('/api/admin/session', authenticate, requireAnyRole(staffRoles), async (request: AuthenticatedRequest, response) => {
     try {
@@ -244,7 +246,7 @@ export function createAdministrationRouter(pool: Pool, authenticate: Authenticat
     try {
       await client.query('BEGIN');
       const actorUserId = await ensurePlatformUser(client, request.user!);
-      const previous = await client.query('SELECT status FROM release_controls WHERE control_key = $1 FOR UPDATE', [controlKey]);
+      const previous = await client.query('SELECT status FROM release_controls WHERE country_code = $1 AND control_key = $2 FOR UPDATE', [market.countryCode, controlKey]);
       if (!previous.rowCount) {
         await client.query('ROLLBACK');
         response.status(404).json({ error: 'Release control not found.' });
@@ -252,26 +254,26 @@ export function createAdministrationRouter(pool: Pool, authenticate: Authenticat
       }
       await client.query(`
         UPDATE release_controls SET
-          status = $2,
-          approver_authority = CASE WHEN $2 = 'approved' THEN $3 ELSE NULL END,
-          evidence_reference = CASE WHEN $2 = 'approved' THEN $4 ELSE NULL END,
-          notes = NULLIF($5, ''),
-          approved_by_user_id = CASE WHEN $2 = 'approved' THEN $6 ELSE NULL END,
-          approved_at = CASE WHEN $2 = 'approved' THEN NOW() ELSE NULL END,
-          expires_at = CASE WHEN $2 = 'approved' THEN $7 ELSE NULL END,
+          status = $3,
+          approver_authority = CASE WHEN $3 = 'approved' THEN $4 ELSE NULL END,
+          evidence_reference = CASE WHEN $3 = 'approved' THEN $5 ELSE NULL END,
+          notes = NULLIF($6, ''),
+          approved_by_user_id = CASE WHEN $3 = 'approved' THEN $7 ELSE NULL END,
+          approved_at = CASE WHEN $3 = 'approved' THEN NOW() ELSE NULL END,
+          expires_at = CASE WHEN $3 = 'approved' THEN $8 ELSE NULL END,
           updated_at = NOW()
-        WHERE control_key = $1
-      `, [controlKey, status, approverAuthority, evidenceReference, notes, actorUserId, expiresAt?.toISOString() ?? null]);
+        WHERE country_code = $1 AND control_key = $2
+      `, [market.countryCode, controlKey, status, approverAuthority, evidenceReference, notes, actorUserId, expiresAt?.toISOString() ?? null]);
       await client.query(`
         INSERT INTO release_control_events (
-          control_key, previous_status, new_status, actor_user_id,
+          country_code, control_key, previous_status, new_status, actor_user_id,
           approver_authority, evidence_reference, notes
-        ) VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''))
-      `, [controlKey, previous.rows[0].status, status, actorUserId, approverAuthority, evidenceReference, notes]);
+        ) VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''))
+      `, [market.countryCode, controlKey, previous.rows[0].status, status, actorUserId, approverAuthority, evidenceReference, notes]);
       await client.query(`
         INSERT INTO audit_events (actor_user_id, event_type, subject_type, details)
         VALUES ($1, 'release_control.status_changed', 'release_control', $2)
-      `, [actorUserId, { controlKey, previousStatus: previous.rows[0].status, status, evidenceReference }]);
+      `, [actorUserId, { countryCode: market.countryCode, controlKey, previousStatus: previous.rows[0].status, status, evidenceReference }]);
       await client.query('COMMIT');
       await recordActivity(pool, request, 'staff', 'staff.release_control_changed', {
         subjectType: 'release_control', subjectId: controlKey, metadata: { status },
@@ -372,8 +374,8 @@ export function createAdministrationRouter(pool: Pool, authenticate: Authenticat
         pool.query('SELECT id, name, slug FROM categories ORDER BY name'),
         pool.query(`
           SELECT id, title, price_minor, currency, condition, category_id, seller_id, seller_name, quantity
-          FROM listings ORDER BY created_at DESC LIMIT 500
-        `),
+          FROM listings WHERE country_code = $1 ORDER BY created_at DESC LIMIT 500
+        `, [market.countryCode]),
       ]);
       await recordActivity(pool, request, 'ai_agent', 'agent.catalogue_read', {
         metadata: { categoryCount: categories.rowCount, listingCount: listings.rowCount },
@@ -388,11 +390,11 @@ export function createAdministrationRouter(pool: Pool, authenticate: Authenticat
   router.get('/api/agent/seller-applications', authenticate, requireAgentPermission('seller_applications:read'), async (request: AuthenticatedRequest, response) => {
     try {
       const result = await pool.query(`
-        SELECT s.id, s.seller_type, s.display_name, s.verification_status, a.city, a.accepted_at
+        SELECT s.id, s.seller_type, s.display_name, s.verification_status, a.city, a.country_code, a.accepted_at
         FROM sellers s JOIN seller_applications a ON a.seller_id = s.id
-        WHERE s.verification_status IN ('pending', 'in_review')
+        WHERE s.verification_status IN ('pending', 'in_review') AND a.country_code = $1
         ORDER BY a.accepted_at ASC LIMIT 100
-      `);
+      `, [market.countryCode]);
       await recordActivity(pool, request, 'ai_agent', 'agent.seller_applications_read', { metadata: { count: result.rowCount } });
       response.json({ applications: result.rows });
     } catch (error) {
@@ -415,9 +417,17 @@ export function createAdministrationRouter(pool: Pool, authenticate: Authenticat
     try {
       const result = await pool.query(`
         INSERT INTO agent_triage_recommendations (agent_id, seller_id, recommendation, summary, details)
-        VALUES ($1, $2, $3, $4, $5)
+        SELECT $1, $2, $3, $4, $5
+        WHERE EXISTS (
+          SELECT 1 FROM seller_applications
+          WHERE seller_id = $2 AND country_code = $6
+        )
         RETURNING id, seller_id, recommendation, summary, created_at
-      `, [request.user!.agentId, sellerId, recommendation, summary, details]);
+      `, [request.user!.agentId, sellerId, recommendation, summary, details, market.countryCode]);
+      if (!result.rowCount) {
+        response.status(404).json({ error: 'Seller application not found.' });
+        return;
+      }
       await recordActivity(pool, request, 'ai_agent', 'agent.seller_application_triaged', {
         subjectType: 'seller', subjectId: sellerId, metadata: { recommendation },
       });

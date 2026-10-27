@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import type { User } from 'oidc-client-ts';
+import type { MarketConfiguration } from '@katondo/contracts';
 import { getUserManager, isCurrentUser, isOidcConfigured } from '../../lib/oidc';
 
 type OnboardingConfig = {
@@ -10,6 +11,7 @@ type OnboardingConfig = {
   authenticationEnabled: boolean;
   sellerTerms: { version: string; url: string } | null;
   privacyNotice: { version: string; url: string } | null;
+  market: MarketConfiguration;
 };
 
 type SellerApplication = {
@@ -134,6 +136,7 @@ export default function SellerOnboardingClient() {
   const configured = isOidcConfigured();
   const canSignIn = Boolean(config?.authenticationEnabled && configured);
   const canApply = Boolean(config?.enabled && config.authenticationEnabled && config.sellerTerms && config.privacyNotice && configured);
+  const marketName = config?.market.countryName || 'your market';
 
   return (
     <main className="page-shell seller-onboarding">
@@ -147,7 +150,7 @@ export default function SellerOnboardingClient() {
       </header>
 
       <section className="seller-intro">
-        <p className="eyebrow">SELL WITH KATONDO · ZAMBIA</p>
+        <p className="eyebrow">SELL WITH KATONDO · {config?.market.countryCode || 'MARKETPLACE'}</p>
         <h1>Good things start<br />with <em>good people.</em></h1>
         <p className="seller-lede">Create a storefront for the things you make, find, or have loved. Every seller is reviewed before listings can go live.</p>
         {loading && <div className="seller-availability" role="status"><span className="availability-dot" /><div><strong>Checking application availability</strong><p>This only takes a moment.</p></div></div>}
@@ -191,7 +194,7 @@ export default function SellerOnboardingClient() {
         <ol><li><span>01</span><div><strong>Apply securely</strong><p>Sign in, choose your seller type, and share the details needed to review your storefront.</p></div></li><li><span>02</span><div><strong>We review your application</strong><p>Your application stays private and pending review. We explain any additional verification before requesting it.</p></div></li><li><span>03</span><div><strong>Get approved before selling</strong><p>Only approved sellers can publish listings. Approval and document checks are not automatic.</p></div></li></ol>
       </section>
 
-      <footer><Link className="wordmark" href="/">katondo<span>.</span></Link><p>Good finds. Good people. Right here.</p><span>Made for Zambia&nbsp; ✳</span></footer>
+      <footer><Link className="wordmark" href="/">katondo<span>.</span></Link><p>Good finds. Good people. Right here.</p><span>Made for {marketName}&nbsp; ✳</span></footer>
     </main>
   );
 }

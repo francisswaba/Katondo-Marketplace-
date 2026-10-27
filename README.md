@@ -1,6 +1,6 @@
 # Katondo App
 
-Katondo is a Zambia-first marketplace for individual and business sellers, platform inventory, standard purchases, timed auctions, and live shopping.
+Katondo is a global, country-configurable marketplace for individual and business sellers, platform inventory, standard purchases, timed auctions, and live shopping. Zambia is the first launch market.
 
 ## Project status
 
@@ -12,6 +12,7 @@ The initial TypeScript monorepo and a web-to-API catalogue slice are in place. T
 - Counsel-review-only privacy and seller-terms drafts: [PRIVACY_NOTICE_DRAFT.md](docs/legal/PRIVACY_NOTICE_DRAFT.md), [SELLER_TERMS_DRAFT.md](docs/legal/SELLER_TERMS_DRAFT.md)
 - Staff roles, AI service-agent access, and activity controls: [STAFF_AND_AGENT_ACCESS.md](docs/operations/STAFF_AND_AGENT_ACCESS.md)
 - Secure sign-in, policy approval and seller-onboarding release sequence: [SELLER_ONBOARDING_RELEASE.md](docs/compliance/SELLER_ONBOARDING_RELEASE.md)
+- Country configuration, isolation, and expansion rules: [COUNTRY_CONFIGURATION.md](docs/architecture/COUNTRY_CONFIGURATION.md)
 - Target clients: iOS, Android, and web
 - Initial market and currency: Zambia, ZMW (deployment-configurable)
 - Development tools: OpenAI Codex as primary; Claude as an alternative

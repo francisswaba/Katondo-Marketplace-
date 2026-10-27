@@ -5,13 +5,15 @@ import type { CatalogueResponse, Listing } from '@katondo/contracts';
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
 const webUrl = (process.env.EXPO_PUBLIC_WEB_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 
-function formatPrice(priceMinor: number, currency: string) {
-  return new Intl.NumberFormat('en-ZM', { style: 'currency', currency }).format(priceMinor / 100);
+function formatPrice(priceMinor: number, currency: string, locale: string) {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(priceMinor / 100);
 }
 
 export default function MarketplaceHome() {
   const [catalogue, setCatalogue] = useState<CatalogueResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const countryName = catalogue?.market.countryName || process.env.EXPO_PUBLIC_DEPLOYMENT_COUNTRY_NAME || 'Zambia';
+  const locale = catalogue?.market.locale || process.env.EXPO_PUBLIC_DEFAULT_LOCALE || 'en-ZM';
 
   useEffect(() => {
     fetch(`${apiUrl}/api/catalogue`)
@@ -28,7 +30,7 @@ export default function MarketplaceHome() {
       <Text style={styles.title}>{item.title}</Text>
       <View style={styles.details}>
         <Text style={styles.seller}>{item.sellerName}</Text>
-        <Text style={styles.price}>{formatPrice(item.priceMinor, item.currency)}</Text>
+        <Text style={styles.price}>{formatPrice(item.priceMinor, item.currency, locale)}</Text>
       </View>
     </Pressable>
   );
@@ -45,7 +47,7 @@ export default function MarketplaceHome() {
           <Text style={styles.wordmark}>katondo<Text style={styles.period}>.</Text></Text>
           <Text style={styles.eyebrow}>YOUR MARKETPLACE, REIMAGINED</Text>
           <Text style={styles.heading}>Good things find new homes.</Text>
-          <Text style={styles.subheading}>Discover one-of-a-kind finds from people and businesses across Zambia.</Text>
+          <Text style={styles.subheading}>Discover one-of-a-kind finds from people and businesses across {countryName}.</Text>
           <Pressable accessibilityRole="link" style={styles.accountButton} onPress={() => Linking.openURL(`${webUrl}/account`)}><Text style={styles.accountButtonText}>Account settings · Password, security and preferences ↗</Text></Pressable>
           <Pressable accessibilityRole="link" style={styles.staffButton} onPress={() => Linking.openURL(`${webUrl}/admin`)}><Text style={styles.staffButtonText}>Katondo team · Open staff workspace ↗</Text></Pressable>
           <Text style={styles.sectionTitle}>Browse categories</Text>

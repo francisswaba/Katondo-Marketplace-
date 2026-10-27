@@ -8,7 +8,7 @@ This repository now has a deployment path for the web storefront on Netlify and 
 2. Add a Railway PostgreSQL service. Set the API service's `DATABASE_URL` to the database's private connection URL/reference.
 3. Generate a public API domain in Railway. The API listens on Railway's injected `PORT`; `/health` checks database connectivity.
 4. Set `CORS_ORIGINS` to the exact Netlify site origin, such as `https://your-staging-site.netlify.app` (no trailing slash). Add a comma-separated list only if there are multiple trusted browser origins.
-5. Set `DEPLOYMENT_COUNTRY=ZM`, `DEFAULT_CURRENCY=ZMW`, and configure `AUTH_ISSUER`, `AUTH_AUDIENCE`, and `AUTH_JWKS_URL` for the selected identity provider before testing protected routes. Do not put secrets in Git or `NEXT_PUBLIC_*` variables.
+5. Configure the active market (`DEPLOYMENT_COUNTRY=ZM`, `DEPLOYMENT_COUNTRY_NAME=Zambia`, `DEFAULT_CURRENCY=ZMW`, `DEFAULT_LOCALE=en-ZM`, and `SUPPORTED_LOCALES=en-ZM,en` for the first launch), then configure `AUTH_ISSUER`, `AUTH_AUDIENCE`, and `AUTH_JWKS_URL` before testing protected routes. Do not put secrets in Git or `NEXT_PUBLIC_*` variables.
 6. Railway runs database migrations before each deployment through the configured pre-deploy command. Do not run the development seed against production data. For a disposable staging database only, optionally run `npm run db:seed` once after the first migration.
 
 ## 2. Create the Netlify website
@@ -24,8 +24,11 @@ This repository now has a deployment path for the web storefront on Netlify and 
 | --- | --- |
 | `DATABASE_URL` | Railway PostgreSQL private connection URL |
 | `CORS_ORIGINS` | Exact Netlify HTTPS site origin(s), comma-separated |
-| `DEPLOYMENT_COUNTRY` | `ZM` |
-| `DEFAULT_CURRENCY` | `ZMW` |
+| `DEPLOYMENT_COUNTRY` | ISO two-letter active market; `ZM` for the first launch |
+| `DEPLOYMENT_COUNTRY_NAME` | Public country name; `Zambia` for the first launch |
+| `DEFAULT_CURRENCY` | ISO currency; `ZMW` for the first launch |
+| `DEFAULT_LOCALE` | BCP 47 default locale; `en-ZM` for the first launch |
+| `SUPPORTED_LOCALES` | Comma-separated locale choices; `en-ZM,en` for the first launch |
 | `AUTH_ISSUER` | Issuer URL for the configured identity provider |
 | `AUTH_AUDIENCE` | Expected API audience, e.g. `katondo-api` |
 | `AUTH_JWKS_URL` | Provider's public JWKS endpoint |
@@ -51,7 +54,7 @@ AI agents use separate confidential machine clients. Their tokens must carry `se
 
 Activity collection starts disabled in migration `004_staff_agents_activity.sql`. If technical context is approved, set a long random `ACTIVITY_IP_HASH_SECRET` in Railway before enabling that option. Enabling any category requires the documented purpose, lawful basis, notice, retention and hosting approval for the exact events collected.
 
-Migration `006_release_controls.sql` creates the fail-closed release register. A top administrator records the external approving authority, evidence reference, optional expiry and notes in `/admin`; an auditor can inspect the result. This record does not replace counsel, regulator, security or vendor approval. Seller onboarding opens only when every release record is effective and all environment checks pass. Revoking any record closes new applications immediately.
+Migrations `006_release_controls.sql` and `007_country_configuration.sql` create the fail-closed, country-scoped release register. A top administrator records the external approving authority, evidence reference, optional expiry and notes in `/admin`; an auditor can inspect the result. This record does not replace counsel, regulator, security or vendor approval. Seller onboarding opens only when every release record for the active country is effective and all environment checks pass. Revoking any record closes new applications immediately.
 
 ## Current staging limitations
 
@@ -70,6 +73,8 @@ The API provides authenticated seller-application and administrator-review endpo
 The identity provider is not selected. Signed JWTs must use a Zambian-approved provider/hosting arrangement and issue `sub`, an email or phone claim plus its corresponding `email_verified` or `phone_number_verified` claim, and only server-assigned roles. The administrator role must only be granted to trusted staff. Authenticated API routes remain disabled unless `AUTH_ENABLED=true` and `AUTH_DATA_PROCESSING_APPROVED=true`, as well as issuer/audience/JWKS values. Reviewers can move applications into review or reject them; this starter flow cannot mark a seller verified. A verified seller state must not be used as a substitute for provider-backed KYC, PACRA checks, or legal approval where those are required. Existing listings and authentication-provider configuration must be reviewed before enabling seller selling permissions.
 
 See `docs/compliance/ZAMBIA_DATA_PROTECTION_READINESS.md` for the known data map and release gates. `docs/legal/PRIVACY_NOTICE_DRAFT.md` and `docs/legal/SELLER_TERMS_DRAFT.md` are expressly unapproved drafts; do not configure their versions as production policies or present them for acceptance until Zambian counsel approves final, product-accurate documents. Current deployment settings put the API in EU West; take no personal-data collection live until the DPC/transfer and hosting review is resolved.
+
+The application is country-configurable; see `docs/architecture/COUNTRY_CONFIGURATION.md`. Zambia's requirements apply to the Zambia environment and remain mandatory for the first launch. Every later country requires its own environment, providers, policies, and release approvals.
 
 ## Hosting split
 

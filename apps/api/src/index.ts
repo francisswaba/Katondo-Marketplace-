@@ -17,10 +17,12 @@ import { createAccountRouter } from './account.js';
 import { recordActivity, scheduleActivityRetention } from './activity.js';
 import { ensurePlatformUser, findPlatformUserId } from './identity.js';
 import { readReleaseReadiness } from './release.js';
+import { getMarketConfiguration } from './market.js';
 
 const app = express();
 const port = Number(process.env.PORT ?? process.env.API_PORT ?? 4000);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const market = getMarketConfiguration();
 
 const allowedOrigins = new Set(
   (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
@@ -186,6 +188,10 @@ app.get('/health', async (_request, response) => {
   }
 });
 
+app.get('/api/market', (_request, response) => {
+  response.json(market);
+});
+
 app.get('/api/catalogue', async (request: AuthenticatedRequest, response) => {
   try {
     const [categoriesResult, listingsResult] = await Promise.all([
@@ -196,11 +202,13 @@ app.get('/api/catalogue', async (request: AuthenticatedRequest, response) => {
                l.seller_name, l.quantity
         FROM listings l
         JOIN categories c ON c.id = l.category_id
+        WHERE l.country_code = $1
         ORDER BY l.created_at DESC
-      `),
+      `, [market.countryCode]),
     ]);
 
     const result: CatalogueResponse = {
+      market,
       categories: categoriesResult.rows.map((row) => ({
         id: row.id,
         name: row.name,
@@ -270,10 +278,11 @@ app.get('/api/seller/onboarding/config', async (_request, response) => {
       authenticationEnabled,
       sellerTerms: readiness.onboardingOpen ? { version: sellerTermsVersion, url: sellerTermsUrl } : null,
       privacyNotice: readiness.onboardingOpen ? { version: privacyNoticeVersion, url: privacyNoticeUrl } : null,
+      market,
     });
   } catch (error) {
     console.error('Seller onboarding release check failed', error);
-    response.json({ enabled: false, authenticationEnabled, sellerTerms: null, privacyNotice: null });
+    response.json({ enabled: false, authenticationEnabled, sellerTerms: null, privacyNotice: null, market });
   }
 });
 
@@ -286,11 +295,11 @@ app.get('/api/seller/onboarding', authenticate, async (request: AuthenticatedReq
     }
     const result = await pool.query(`
       SELECT s.id, s.seller_type, s.display_name, s.verification_status,
-             a.legal_name, a.business_registration_number, a.city, a.accepted_at
+             a.legal_name, a.business_registration_number, a.city, a.country_code, a.accepted_at
       FROM sellers s
-      LEFT JOIN seller_applications a ON a.seller_id = s.id
-      WHERE s.user_id = $1
-    `, [userId]);
+      JOIN seller_applications a ON a.seller_id = s.id
+      WHERE s.user_id = $1 AND a.country_code = $2
+    `, [userId, market.countryCode]);
     await recordActivity(pool, request, 'seller', 'seller.application_viewed');
     response.json({ application: result.rows[0] ?? null });
   } catch (error) {
@@ -346,9 +355,9 @@ app.post('/api/seller/onboarding', authenticate, async (request: AuthenticatedRe
     await client.query(`
       INSERT INTO seller_applications (
         seller_id, legal_name, business_registration_number, city,
-        seller_terms_version, privacy_notice_version
-      ) VALUES ($1, $2, $3, $4, $5, $6)
-    `, [sellerId, legalName, sellerType === 'business' ? registrationNumber : null, city, sellerTermsVersion, privacyNoticeVersion]);
+        seller_terms_version, privacy_notice_version, country_code
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [sellerId, legalName, sellerType === 'business' ? registrationNumber : null, city, sellerTermsVersion, privacyNoticeVersion, market.countryCode]);
     await client.query(`
       INSERT INTO seller_verification_events (seller_id, new_status, reason, actor_user_id)
       VALUES ($1, 'pending', 'Seller application submitted for review', $2)
@@ -359,7 +368,7 @@ app.post('/api/seller/onboarding', authenticate, async (request: AuthenticatedRe
     `, [userId, sellerId]);
     await client.query('COMMIT');
     await recordActivity(pool, request, 'seller', 'seller.application_submitted', { subjectType: 'seller', subjectId: sellerId });
-    response.status(201).json({ application: { ...seller.rows[0], city, acceptedAt: new Date().toISOString() } });
+    response.status(201).json({ application: { ...seller.rows[0], city, countryCode: market.countryCode, acceptedAt: new Date().toISOString() } });
   } catch (error) {
     await client.query('ROLLBACK');
     if ((error as { code?: string }).code === '23505') {
@@ -382,7 +391,7 @@ app.get('/api/admin/seller-applications', authenticate, requireAnyRole(['super_a
     request.user!.platformUserId = await ensurePlatformUser(pool, request.user!);
     const result = await pool.query(`
       SELECT s.id, s.user_id, s.seller_type, s.display_name, s.verification_status,
-             a.legal_name, a.business_registration_number, a.city, a.accepted_at,
+             a.legal_name, a.business_registration_number, a.city, a.country_code, a.accepted_at,
              u.email, u.phone,
              triage.recommendation AS agent_recommendation,
              triage.summary AS agent_summary,
@@ -396,9 +405,9 @@ app.get('/api/admin/seller-applications', authenticate, requireAnyRole(['super_a
         WHERE seller_id = s.id
         ORDER BY created_at DESC LIMIT 1
       ) triage ON TRUE
-      WHERE s.verification_status IN ('pending', 'in_review')
+      WHERE s.verification_status IN ('pending', 'in_review') AND a.country_code = $1
       ORDER BY a.accepted_at ASC
-    `);
+    `, [market.countryCode]);
     await recordActivity(pool, request, 'staff', 'staff.seller_applications_viewed', { metadata: { count: result.rowCount } });
     response.json({ applications: result.rows });
   } catch (error) {
@@ -423,8 +432,12 @@ app.post('/api/admin/seller-applications/:sellerId/review', authenticate, requir
     const updated = await client.query(`
       UPDATE sellers SET verification_status = $2
       WHERE id = $1 AND verification_status IN ('pending', 'in_review')
+        AND EXISTS (
+          SELECT 1 FROM seller_applications a
+          WHERE a.seller_id = sellers.id AND a.country_code = $3
+        )
       RETURNING id, verification_status
-    `, [sellerId, status]);
+    `, [sellerId, status, market.countryCode]);
     if (!updated.rowCount) {
       await client.query('ROLLBACK');
       response.status(404).json({ error: 'No reviewable seller application was found.' });
@@ -456,10 +469,10 @@ app.get('/api/admin/operations/overview', authenticate, requireAnyRole(['super_a
   try {
     request.user!.platformUserId = await ensurePlatformUser(pool, request.user!);
     const [verification, payments, payouts, deliveryOptions] = await Promise.all([
-      pool.query(`SELECT verification_status AS status, COUNT(*)::int AS count FROM sellers GROUP BY verification_status ORDER BY verification_status`),
-      pool.query(`SELECT status, COUNT(*)::int AS count, COALESCE(SUM(amount_minor), 0)::text AS amount_minor FROM payment_records GROUP BY status ORDER BY status`),
-      pool.query(`SELECT status, COUNT(*)::int AS count, COALESCE(SUM(amount_minor), 0)::text AS amount_minor FROM payout_records GROUP BY status ORDER BY status`),
-      pool.query(`SELECT delivery_mode, COUNT(*)::int AS count FROM delivery_options WHERE is_active GROUP BY delivery_mode ORDER BY delivery_mode`),
+      pool.query(`SELECT s.verification_status AS status, COUNT(*)::int AS count FROM sellers s JOIN seller_applications a ON a.seller_id = s.id WHERE a.country_code = $1 GROUP BY s.verification_status ORDER BY s.verification_status`, [market.countryCode]),
+      pool.query(`SELECT status, COUNT(*)::int AS count, COALESCE(SUM(amount_minor), 0)::text AS amount_minor FROM payment_records WHERE country_code = $1 GROUP BY status ORDER BY status`, [market.countryCode]),
+      pool.query(`SELECT status, COUNT(*)::int AS count, COALESCE(SUM(amount_minor), 0)::text AS amount_minor FROM payout_records WHERE country_code = $1 GROUP BY status ORDER BY status`, [market.countryCode]),
+      pool.query(`SELECT delivery_mode, COUNT(*)::int AS count FROM delivery_options WHERE is_active AND country_code = $1 GROUP BY delivery_mode ORDER BY delivery_mode`, [market.countryCode]),
     ]);
     const result = {
       sellerVerification: verification.rows,
