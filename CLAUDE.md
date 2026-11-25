@@ -24,7 +24,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - npm workspaces monorepo, Node 24.
 - `apps/web` Next.js storefront + `/admin` staff workspace + `/account` settings + `/sell` onboarding.
 - `apps/api` Express API (OIDC/JWT auth boundary, roles, activity tracking, release controls).
-- `apps/mobile` Expo (iOS/Android), id `com.katondo.marketplace`.
+- `apps/mobile` Expo (iOS/Android), id `com.katondo.marketplace`. Native screens: home (`app/index.tsx`), listing (`app/listing/[id].tsx`), shop with reviews (`app/shop/[id].tsx`). Shared theme/logo/artwork/stars in `components/kit.tsx`. Browse, search, sell, account and order reviews still open the website until in-app sign-in exists.
 - `packages/contracts` shared TypeScript types. Must build before web/api.
 - `infra/postgres/migrations` 001–009 (latest: 009 orders and reviews). `infra/keycloak` scaffold (not deployed).
 

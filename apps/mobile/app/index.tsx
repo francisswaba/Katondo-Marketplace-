@@ -1,171 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
+import { productTypes, type CatalogueResponse } from '@katondo/contracts';
+import ListingTile from '../components/ListingTile';
 import {
-  AccessibilityInfo, Animated, Appearance, Easing, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme,
-} from 'react-native';
-import { getProductType, productTypes, type CatalogueResponse, type Listing, type ProductType } from '@katondo/contracts';
-
-const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
-const webUrl = (process.env.EXPO_PUBLIC_WEB_URL ?? 'http://localhost:3000').replace(/\/$/, '');
-
-/** Same per-type colours as the website's pattern artwork. */
-const typePalette: Record<ProductType, [string, string]> = {
-  fashion: ['#1F5D7A', '#9FD3E6'], electronics: ['#0A3D2E', '#3BD18F'], vehicles: ['#1C2420', '#BFCBC4'],
-  property: ['#0E7C57', '#BFEBD7'], home: ['#9A5A2C', '#F0CFAF'], food: ['#D9A821', '#5C3F05'],
-  agriculture: ['#5E7A31', '#E1EBC2'], handmade: ['#6E3326', '#E8A97F'], services: ['#36437F', '#C7CEF4'], general: ['#2B3832', '#A7B7AE'],
-};
-
-const light = { paper: '#f4f7f5', surface: '#ffffff', ink: '#0f1a15', muted: '#5b6962', line: '#dde4e0', brand: '#0d7a55', brandPale: '#dcf1e6', live: '#f2631c', livePale: '#fff0e6' };
-const dark = { paper: '#08130e', surface: '#0f1f18', ink: '#e9f2ed', muted: '#95a79e', line: '#1f3329', brand: '#2fbf87', brandPale: '#12382a', live: '#f2631c', livePale: '#3a1f10' };
-type Theme = typeof light;
-const rounded = Platform.select({ ios: 'ui-rounded', default: undefined });
-
-function formatPrice(priceMinor: number, currency: string, locale: string) {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(priceMinor / 100);
-}
-
-/** A simple striped stand-in for the website's chitenge patterns until photos are uploaded. */
-function TypeArt({ type, height, radius = 20 }: { type: ProductType; height: number | `${number}%`; radius?: number }) {
-  const [bg, fg] = typePalette[type] ?? typePalette.general;
-  return (
-    <View style={{ height, borderRadius: radius, backgroundColor: bg, overflow: 'hidden' }}>
-      {[0, 1, 2, 3, 4, 5].map((index) => (
-        <View key={index} style={{ position: 'absolute', left: -40 + index * 46, top: -20, width: 14, height: 400, backgroundColor: fg, opacity: 0.28, transform: [{ rotate: '-24deg' }] }} />
-      ))}
-    </View>
-  );
-}
-
-function facts(listing: Listing, limit: number) {
-  return getProductType(listing.productType).fields
-    .filter((field) => field.highlight && listing.attributes[field.key])
-    .slice(0, limit)
-    .map((field) => ({ label: field.label, value: listing.attributes[field.key] }));
-}
-
-function ListingTile({ listing, locale, theme }: { listing: Listing; locale: string; theme: Theme }) {
-  const s = styles(theme);
-  const price = formatPrice(listing.priceMinor, listing.currency, locale);
-  const open = () => Linking.openURL(`${webUrl}/listing/${listing.id}`);
-
-  if (listing.displayStyle === 'spotlight') {
-    return (
-      <Pressable accessibilityRole="link" onPress={open} style={[s.wide, s.spotlight]}>
-        <TypeArt type={listing.productType} height={190} />
-        <View style={{ padding: 14, gap: 8 }}>
-          <Text style={s.kicker}>{listing.categoryName}</Text>
-          <Text style={s.spotlightTitle}>{listing.title}</Text>
-          <View style={s.chips}>{facts(listing, 3).map((fact) => <Text key={fact.label} style={s.darkChip}>{/^[\d.,\s]+$/.test(fact.value) ? `${fact.label.replace(/\s*\(.*\)$/, '')} ${fact.value}` : fact.value}</Text>)}</View>
-          <Text style={[s.price, { color: '#eef6f2', fontSize: 24 }]}>{price}</Text>
-        </View>
-      </Pressable>
-    );
-  }
-  if (listing.displayStyle === 'spec') {
-    return (
-      <Pressable accessibilityRole="link" onPress={open} style={[s.wide, s.panel, { flexDirection: 'row', gap: 12 }]}>
-        <View style={{ width: '40%' }}><TypeArt type={listing.productType} height={170} radius={16} /></View>
-        <View style={{ flex: 1, gap: 4 }}>
-          <Text style={s.title} numberOfLines={2}>{listing.title}</Text>
-          {facts(listing, 3).map((fact) => (
-            <View key={fact.label} style={s.specRow}><Text style={s.muted}>{fact.label}</Text><Text style={s.specValue}>{fact.value}</Text></View>
-          ))}
-          <Text style={[s.price, { marginTop: 'auto' }]}>{price}</Text>
-        </View>
-      </Pressable>
-    );
-  }
-  if (listing.displayStyle === 'video') {
-    return (
-      <Pressable accessibilityRole="link" onPress={open} style={s.half}>
-        <TypeArt type={listing.productType} height={300} />
-        <View style={s.videoOverlay}>
-          <Text style={[s.title, { color: '#fff' }]} numberOfLines={2}>{listing.title}</Text>
-          <Text style={[s.price, { color: '#fff' }]}>{price}</Text>
-        </View>
-      </Pressable>
-    );
-  }
-  return (
-    <Pressable accessibilityRole="link" onPress={open} style={s.half}>
-      <TypeArt type={listing.productType} height={listing.displayStyle === 'gallery' ? 190 : 210} />
-      {listing.displayStyle === 'gallery' && (
-        <View style={{ flexDirection: 'row', gap: 5, marginTop: 5 }}>
-          <View style={{ flex: 1 }}><TypeArt type={listing.productType} height={44} radius={10} /></View>
-          <View style={{ flex: 1 }}><TypeArt type={listing.productType} height={44} radius={10} /></View>
-        </View>
-      )}
-      <Text style={[s.title, { marginTop: 8 }]} numberOfLines={2}>{listing.title}</Text>
-      <Text style={s.price}>{price}</Text>
-      <Text style={s.muted} numberOfLines={1}>{listing.sellerName}</Text>
-    </Pressable>
-  );
-}
-
-/** A ring that ripples out from the live dot. Holds still when the phone asks for reduced motion. */
-function PulseRing({ size, colour = '#f2631c' }: { size: number; colour?: string }) {
-  const progress = useRef(new Animated.Value(0)).current;
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduced).catch(() => setReduced(false));
-  }, []);
-  useEffect(() => {
-    if (reduced) return;
-    const loop = Animated.loop(Animated.timing(progress, { toValue: 1, duration: 1800, easing: Easing.out(Easing.cubic), useNativeDriver: true }));
-    loop.start();
-    return () => loop.stop();
-  }, [progress, reduced]);
-  const scale = reduced ? 1.6 : progress.interpolate({ inputRange: [0, 1], outputRange: [1, 2.6] });
-  const opacity = reduced ? 0.35 : progress.interpolate({ inputRange: [0, 1], outputRange: [0.7, 0] });
-  return (
-    <Animated.View pointerEvents="none" style={{ position: 'absolute', width: size, height: size, borderRadius: size / 2, borderWidth: Math.max(1.5, size / 6), borderColor: colour, opacity, transform: [{ scale }] }} />
-  );
-}
-
-/** The Katondo "Live" mark: a rounded K (follows the theme colour) with the orange live dot. */
-function BrandMark({ size = 26, colour, live = false }: { size?: number; colour: string; live?: boolean }) {
-  const u = size / 120;
-  const bar = (cx: number, cy: number, length: number, angle: number) => ({
-    position: 'absolute' as const, left: (cx - length / 2) * u, top: (cy - 12) * u,
-    width: length * u, height: 24 * u, borderRadius: 12 * u, backgroundColor: colour, transform: [{ rotate: `${angle}deg` }],
-  });
-  return (
-    <View style={{ width: size, height: size }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <View style={{ position: 'absolute', left: 20 * u, top: 18 * u, width: 24 * u, height: 92 * u, borderRadius: 12 * u, backgroundColor: colour }} />
-      <View style={bar(79, 83, 72.4, 38.3)} />
-      <View style={bar(69, 50, 56.6, -47.5)} />
-      <View style={{ position: 'absolute', left: 86 * u, top: 8 * u, width: 24 * u, height: 24 * u, alignItems: 'center', justifyContent: 'center' }}>
-        {live && <PulseRing size={24 * u} />}
-        <View style={{ width: 24 * u, height: 24 * u, borderRadius: 12 * u, backgroundColor: '#f2631c' }} />
-      </View>
-    </View>
-  );
-}
-
-/** Light/dark switch. Overrides the phone's setting for as long as the app is open. */
-function ThemeSwitch({ theme, isDark }: { theme: Theme; isDark: boolean }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      onPress={() => Appearance.setColorScheme(isDark ? 'light' : 'dark')}
-      hitSlop={8}
-      style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: theme.line, backgroundColor: theme.surface, alignItems: 'center', justifyContent: 'center' }}
-    >
-      {isDark
-        ? <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: theme.ink }} />
-        : (
-          <View style={{ width: 18, height: 18 }}>
-            <View style={{ position: 'absolute', width: 18, height: 18, borderRadius: 9, backgroundColor: theme.ink }} />
-            <View style={{ position: 'absolute', left: 6, top: -3, width: 16, height: 16, borderRadius: 8, backgroundColor: theme.surface }} />
-          </View>
-        )}
-    </Pressable>
-  );
-}
+  BrandMark, PulseRing, ThemeSwitch, TypeArt, apiUrl, formatPrice, rounded, useTheme, webUrl, type Theme,
+} from '../components/kit';
 
 export default function MarketplaceHome() {
-  const isDark = useColorScheme() === 'dark';
-  const theme = isDark ? dark : light;
+  const { theme, isDark } = useTheme();
   const s = styles(theme);
   const [catalogue, setCatalogue] = useState<CatalogueResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -228,7 +71,7 @@ export default function MarketplaceHome() {
           <View style={[s.panel, { marginTop: 18 }]}>
             <Text style={[s.sectionTitle, { marginTop: 0, fontSize: 19 }]}>Everyday buys</Text>
             {quick.map((listing) => (
-              <Pressable key={listing.id} accessibilityRole="link" onPress={() => Linking.openURL(`${webUrl}/listing/${listing.id}`)} style={s.quickRow}>
+              <Pressable key={listing.id} accessibilityRole="link" onPress={() => router.push(`/listing/${listing.id}`)} style={s.quickRow}>
                 <View style={{ width: 48 }}><TypeArt type={listing.productType} height={48} radius={12} /></View>
                 <View style={{ flex: 1 }}><Text style={s.title} numberOfLines={1}>{listing.title}</Text><Text style={s.muted}>{listing.sellerName}</Text></View>
                 <Text style={s.price}>{formatPrice(listing.priceMinor, listing.currency, locale)}</Text>
