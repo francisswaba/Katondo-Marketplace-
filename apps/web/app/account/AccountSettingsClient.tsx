@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import BrandMark from '../../components/BrandMark';
 import ThemeToggle, { setTheme } from '../../components/ThemeToggle';
 import { FormEvent, useEffect, useState } from 'react';
 import type { User } from 'oidc-client-ts';
@@ -115,15 +116,15 @@ export default function AccountSettingsClient() {
     }
   }
 
-  if (loading) return <main className="account-gate"><Link className="wordmark" href="/">katondo</Link><ThemeToggle /><p>Opening your account…</p></main>;
+  if (loading) return <main className="account-gate"><Link className="wordmark" href="/"><BrandMark />katondo</Link><ThemeToggle /><p>Opening your account…</p></main>;
 
   if (!user || !data || !preferences) {
-    return <main className="account-gate"><Link className="wordmark" href="/">katondo</Link><ThemeToggle /><section className="account-login-card"><p className="eyebrow">Your account</p><h1>Settings that travel with you.</h1><p>Sign in to manage password and security, contact details, appearance, and notifications.</p>{message && <p className="form-message">{message}</p>}{isOidcConfigured() ? <button className="primary-button button-reset" type="button" onClick={signIn}>Sign in to your account</button> : <p className="account-note">Account sign-in is not configured for this environment.</p>}</section></main>;
+    return <main className="account-gate"><Link className="wordmark" href="/"><BrandMark />katondo</Link><ThemeToggle /><section className="account-login-card"><p className="eyebrow">Your account</p><h1>Settings that travel with you.</h1><p>Sign in to manage password and security, contact details, appearance, and notifications.</p>{message && <p className="form-message">{message}</p>}{isOidcConfigured() ? <button className="primary-button button-reset" type="button" onClick={signIn}>Sign in to your account</button> : <p className="account-note">Account sign-in is not configured for this environment.</p>}</section></main>;
   }
 
   return (
     <main className="account-shell">
-      <header className="admin-topbar"><div><Link className="wordmark" href="/">katondo</Link><span className="admin-badge">Account</span></div><div className="admin-user"><span>{data.account.displayName || data.account.email || 'Katondo member'}</span><button className="text-button" type="button" onClick={signOut}>Sign out</button><ThemeToggle /></div></header>
+      <header className="admin-topbar"><div><Link className="wordmark" href="/"><BrandMark />katondo</Link><span className="admin-badge">Account</span></div><div className="admin-user"><span>{data.account.displayName || data.account.email || 'Katondo member'}</span><button className="text-button" type="button" onClick={signOut}>Sign out</button><ThemeToggle /></div></header>
       <section className="account-heading"><p className="eyebrow">Account settings</p><h1>Make Katondo work for you.</h1><p>Security details stay with the approved sign-in provider. Marketplace preferences are stored by Katondo.</p></section>
       {message && <p className="admin-flash">{message}</p>}
       <section className="account-grid">
@@ -142,7 +143,7 @@ export default function AccountSettingsClient() {
         </div>
         <button className="primary-button button-reset" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</button>
       </form>
-      <footer><Link className="wordmark" href="/">katondo</Link><p>Your account. Your choices.</p><span><Link className="staff-link" href="/">Marketplace</Link>{preferences.available.staff && <>&nbsp; · &nbsp;<Link className="staff-link" href="/admin">Staff workspace</Link></>}</span></footer>
+      <footer><Link className="wordmark" href="/"><BrandMark />katondo</Link><p>Your account. Your choices.</p><span><Link className="staff-link" href="/">Marketplace</Link>{preferences.available.staff && <>&nbsp; · &nbsp;<Link className="staff-link" href="/admin">Staff workspace</Link></>}</span></footer>
     </main>
   );
 }

@@ -79,7 +79,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
 }
 .brand { display: inline-flex; align-items: center; gap: 9px; font: 800 23px var(--display); letter-spacing: -.045em; text-decoration: none; color: var(--ink); }
-.brand-mark { width: 22px; height: 22px; border-radius: 7px 7px 7px 50%; background: var(--malachite); box-shadow: inset -6px -6px 0 var(--malachite-deep); }
+.brand-mark { flex: none; width: 26px; height: 26px; color: var(--malachite); }
 .header-search { flex: 1; min-width: 0; max-width: 560px; display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 16px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
 .header-search svg, .bottom-nav svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .header-search svg { color: var(--muted); }

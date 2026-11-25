@@ -11,11 +11,18 @@
       "bundleIdentifier": "com.katondo.marketplace"
     },
     "android": {
-      "package": "com.katondo.marketplace"
+      "package": "com.katondo.marketplace",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0d7a55"
+      }
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router"
+    ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "icon": "./assets/icon.png"
   }
 }

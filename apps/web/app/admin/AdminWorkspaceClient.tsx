@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import BrandMark from '../../components/BrandMark';
 import ThemeToggle from '../../components/ThemeToggle';
 import { FormEvent, useEffect, useState } from 'react';
 import type { User } from 'oidc-client-ts';
@@ -286,13 +287,13 @@ export default function AdminWorkspaceClient() {
   const configured = isOidcConfigured();
 
   if (loading && !session) {
-    return <main className="admin-gate"><Link className="wordmark" href="/">katondo</Link><ThemeToggle /><p>Opening the staff workspace…</p></main>;
+    return <main className="admin-gate"><Link className="wordmark" href="/"><BrandMark />katondo</Link><ThemeToggle /><p>Opening the staff workspace…</p></main>;
   }
 
   if (!configured || !user || !session) {
     return (
       <main className="admin-gate">
-        <Link className="wordmark" href="/">katondo</Link><ThemeToggle />
+        <Link className="wordmark" href="/"><BrandMark />katondo</Link><ThemeToggle />
         <section className="admin-login-card">
           <p className="eyebrow">Katondo operations</p>
           <h1>Staff workspace</h1>
@@ -309,7 +310,7 @@ export default function AdminWorkspaceClient() {
 
   return (
     <main className="admin-shell">
-      <header className="admin-topbar"><div><Link className="wordmark" href="/">katondo</Link><span className="admin-badge">Operations</span></div><div className="admin-user"><span>{session.staff.display_name}</span><Link className="text-link" href="/account">Account settings</Link><button className="text-button" type="button" onClick={signOut}>Sign out</button><ThemeToggle /></div></header>
+      <header className="admin-topbar"><div><Link className="wordmark" href="/"><BrandMark />katondo</Link><span className="admin-badge">Operations</span></div><div className="admin-user"><span>{session.staff.display_name}</span><Link className="text-link" href="/account">Account settings</Link><button className="text-button" type="button" onClick={signOut}>Sign out</button><ThemeToggle /></div></header>
       <section className="admin-heading"><div><p className="eyebrow">Staff workspace</p><h1>Welcome back, {session.staff.display_name.split(' ')[0]}.</h1><div className="role-list">{session.staff.roles.map((role) => <span key={role}>{friendlyRole(role)}</span>)}</div></div><p>Your available tools follow the roles assigned to your work account. Every sensitive change is recorded in the audit history.</p></section>
       {message && <div className="admin-flash" role="status">{message}</div>}
 
@@ -334,7 +335,7 @@ export default function AdminWorkspaceClient() {
 
       {session.capabilities.viewActivity && <section className="admin-section"><div className="admin-section-title"><div><p className="eyebrow">Accountability</p><h2>Recent activity</h2></div><span>Latest 50 events</span></div><div className="event-table">{events.map((event) => <article key={event.id}><time>{new Date(event.created_at).toLocaleString('en-ZM')}</time><strong>{event.event_name}</strong><span>{friendlyRole(event.actor_type)} · {event.category}</span><small>{event.route || event.subject_type || 'Recorded event'}</small></article>)}{events.length === 0 && <div className="admin-empty">No activity events have been collected.</div>}</div></section>}
 
-      <footer><Link className="wordmark" href="/">katondo</Link><p>Staff access is role based and audited.</p><span>Multi-market operations</span></footer>
+      <footer><Link className="wordmark" href="/"><BrandMark />katondo</Link><p>Staff access is role based and audited.</p><span>Multi-market operations</span></footer>
     </main>
   );
 }

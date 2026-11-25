@@ -1,3 +1,4 @@
+import BrandMark from './BrandMark';
 import ThemeToggle from './ThemeToggle';
 
 type NavKey = 'home' | 'browse' | 'sell' | 'account';
@@ -17,7 +18,7 @@ export function SiteHeader({ query = '' }: { query?: string }) {
   return (
     <header className="site-header">
       <a className="brand" href="/" aria-label="Katondo home">
-        <span className="brand-mark" aria-hidden="true" />
+        <BrandMark />
         katondo
       </a>
       <form className="header-search" action="/browse" role="search">
@@ -57,7 +58,7 @@ export function BottomNav({ active }: { active: NavKey }) {
 export function SiteFooter({ countryName }: { countryName: string }) {
   return (
     <footer className="site-footer">
-      <a className="brand" href="/"><span className="brand-mark" aria-hidden="true" />katondo</a>
+      <a className="brand" href="/"><BrandMark />katondo</a>
       <p>Buy and sell with people and businesses across {countryName}.</p>
       <nav aria-label="Footer">
         <a href="/sell">Become a seller</a>

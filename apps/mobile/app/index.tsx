@@ -101,6 +101,23 @@ function ListingTile({ listing, locale, theme }: { listing: Listing; locale: str
   );
 }
 
+/** The Katondo "Live" mark: a rounded K (follows the theme colour) with the orange live dot. */
+function BrandMark({ size = 26, colour }: { size?: number; colour: string }) {
+  const u = size / 120;
+  const bar = (cx: number, cy: number, length: number, angle: number) => ({
+    position: 'absolute' as const, left: (cx - length / 2) * u, top: (cy - 12) * u,
+    width: length * u, height: 24 * u, borderRadius: 12 * u, backgroundColor: colour, transform: [{ rotate: `${angle}deg` }],
+  });
+  return (
+    <View style={{ width: size, height: size }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View style={{ position: 'absolute', left: 20 * u, top: 18 * u, width: 24 * u, height: 92 * u, borderRadius: 12 * u, backgroundColor: colour }} />
+      <View style={bar(79, 83, 72.4, 38.3)} />
+      <View style={bar(69, 50, 56.6, -47.5)} />
+      <View style={{ position: 'absolute', left: 86 * u, top: 8 * u, width: 24 * u, height: 24 * u, borderRadius: 12 * u, backgroundColor: '#f2631c' }} />
+    </View>
+  );
+}
+
 /** Light/dark switch. Overrides the phone's setting for as long as the app is open. */
 function ThemeSwitch({ theme, isDark }: { theme: Theme; isDark: boolean }) {
   return (
@@ -149,7 +166,7 @@ export default function MarketplaceHome() {
       <ScrollView contentContainerStyle={s.content}>
         <View style={s.topRow}>
           <View style={s.brandRow}>
-            <View style={s.brandMark} />
+            <BrandMark colour={theme.brand} />
             <Text style={s.brand}>katondo</Text>
           </View>
           <ThemeSwitch theme={theme} isDark={isDark} />
@@ -212,7 +229,6 @@ const styles = (t: Theme) => StyleSheet.create({
   content: { padding: 18, paddingTop: 60, paddingBottom: 48 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brandMark: { width: 20, height: 20, borderTopLeftRadius: 6, borderTopRightRadius: 6, borderBottomRightRadius: 6, borderBottomLeftRadius: 10, backgroundColor: t.brand },
   brand: { color: t.ink, fontSize: 21, fontWeight: '800', letterSpacing: -0.9 },
   heading: { color: t.ink, fontSize: 40, fontWeight: '800', letterSpacing: -1.6, lineHeight: 42, marginTop: 28 },
   search: { marginTop: 20, borderRadius: 999, backgroundColor: t.surface, borderWidth: 1, borderColor: t.line, paddingHorizontal: 18 },

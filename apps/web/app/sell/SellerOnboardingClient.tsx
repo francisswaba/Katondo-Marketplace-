@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import BrandMark from '../../components/BrandMark';
 import ThemeToggle from '../../components/ThemeToggle';
 import { FormEvent, useEffect, useState } from 'react';
 import type { User } from 'oidc-client-ts';
@@ -142,7 +143,7 @@ export default function SellerOnboardingClient() {
   return (
     <main className="page-shell seller-onboarding">
       <header className="topbar">
-        <Link className="wordmark" href="/">katondo</Link>
+        <Link className="wordmark" href="/"><BrandMark />katondo</Link>
         <div className="seller-header-actions">
           {user && <Link className="text-link" href="/account">Account settings</Link>}
           {user && <button className="text-button" type="button" onClick={signOut}>Sign out</button>}
@@ -196,7 +197,7 @@ export default function SellerOnboardingClient() {
         <ol><li><span>01</span><div><strong>Apply securely</strong><p>Sign in, choose your seller type, and share the details needed to review your storefront.</p></div></li><li><span>02</span><div><strong>We review your application</strong><p>Your application stays private and pending review. We explain any additional verification before requesting it.</p></div></li><li><span>03</span><div><strong>Get approved before selling</strong><p>Only approved sellers can publish listings. Approval and document checks are not automatic.</p></div></li></ol>
       </section>
 
-      <footer><Link className="wordmark" href="/">katondo</Link><p>Good finds. Good people. Right here.</p><span>Made for {marketName}</span></footer>
+      <footer><Link className="wordmark" href="/"><BrandMark />katondo</Link><p>Good finds. Good people. Right here.</p><span>Made for {marketName}</span></footer>
     </main>
   );
 }
