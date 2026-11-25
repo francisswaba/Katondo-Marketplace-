@@ -16,7 +16,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - Product types, display styles and shop layouts are defined once in `packages/contracts` (`productTypes`, `displayStyles`, `storefrontLayouts`). Add a type or style there, then extend the SQL check constraints in a new migration.
 - Each listing stores `product_type`, `display_style` and `attributes` (JSON, validated against the type's fields in `apps/api/src/listings.ts`).
 - Web cards render per style in `apps/web/components/ListingCard.tsx`; artwork per type in `PatternArt.tsx`. Seller flow: `/sell/studio`.
-- Logo: the "Live" mark, a rounded K with an orange live dot (`apps/web/components/BrandMark.tsx`; tab icon `apps/web/app/icon.svg`; app icons in `apps/mobile/assets/`). The K follows the theme colour; the dot is always live orange. App icons carry a still ring around the dot; the ring pulses only in live moments (`BrandMark live`, page loading, live badges, header while an auction runs via `SiteHeader live`). Reduced-motion settings freeze it.
+- Logo: the "Live" mark, a rounded K with an orange live dot (`apps/web/components/BrandMark.tsx`; tab icon `apps/web/app/icon.svg`; app icons in `apps/mobile/assets/`). The K follows the theme colour; the dot is always live orange. App icons have no ring. A ring pulses from the dot only in live moments (`BrandMark live`, page loading, live badges, header while an auction runs via `SiteHeader live`). Reduced-motion settings freeze it.
 - Design system (in `apps/web/app/styles.css`): malachite green brand, orange only for live/bidding, Apple system type (rounded for prices), chitenge-inspired patterns until real photos exist. Avoid generic AI-UI looks.
 
 ## Stack and layout
