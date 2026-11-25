@@ -38,5 +38,5 @@ export function getShopReviews(sellerId: string) {
 
 /** Optional features (reviews, messaging) switched on in the API. Off if the API can't be reached. */
 export async function getFeatures(): Promise<FeatureFlags> {
-  return (await getJson<FeatureFlags>('/api/features')) ?? { reviews: false, messaging: false };
+  return (await getJson<FeatureFlags>('/api/features')) ?? { reviews: false, messaging: false, support: false };
 }

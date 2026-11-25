@@ -370,4 +370,87 @@ export type ConversationDetail = ConversationSummary & {
   blockedByMe: boolean;
 };
 
-export type FeatureFlags = { reviews: boolean; messaging: boolean };
+export type FeatureFlags = { reviews: boolean; messaging: boolean; support: boolean };
+
+
+/* ---------- Help and complaints ---------- */
+
+export type SupportCategory =
+  | 'order_problem' | 'report_listing' | 'report_shop' | 'report_review'
+  | 'account' | 'seller_decision' | 'privacy_request' | 'other';
+export type SupportStatus = 'received' | 'in_review' | 'waiting_on_requester' | 'resolved';
+export type SupportPriority = 'urgent' | 'high' | 'normal' | 'low';
+export type SupportReportReason = 'counterfeit' | 'prohibited' | 'scam' | 'misleading' | 'offensive' | 'other';
+export type PrivacyRequestType = 'access' | 'correction' | 'deletion' | 'objection' | 'other';
+
+export const supportCategories: Array<{ id: SupportCategory; label: string; description: string; subject?: 'listing' | 'seller' | 'review' | 'order' }> = [
+  { id: 'order_problem', label: 'A problem with an order', description: 'Item not received, not as described, damaged, or a refund question.', subject: 'order' },
+  { id: 'report_listing', label: 'Report a listing', description: 'Fake, banned, dangerous or misleading item.', subject: 'listing' },
+  { id: 'report_shop', label: 'Report a shop', description: 'A seller you think is dishonest or breaking the rules.', subject: 'seller' },
+  { id: 'report_review', label: 'Report a review', description: 'A review that is false, abusive or shares private details.', subject: 'review' },
+  { id: 'account', label: 'My account', description: 'Signing in, account settings or a restriction on your account.' },
+  { id: 'seller_decision', label: 'A decision about my shop', description: 'Seller application, removed listing or a shop restriction you disagree with.' },
+  { id: 'privacy_request', label: 'My personal data', description: 'See, correct or delete the information Katondo holds about you.' },
+  { id: 'other', label: 'Something else', description: 'Anything not listed here, including a complaint about Katondo.' },
+];
+
+export const supportReportReasons: Array<{ id: SupportReportReason; label: string }> = [
+  { id: 'counterfeit', label: 'Fake or counterfeit' },
+  { id: 'prohibited', label: 'Banned or dangerous item' },
+  { id: 'scam', label: 'Scam or fraud' },
+  { id: 'misleading', label: 'Misleading description or price' },
+  { id: 'offensive', label: 'Offensive or abusive' },
+  { id: 'other', label: 'Something else' },
+];
+
+export const privacyRequestTypes: Array<{ id: PrivacyRequestType; label: string }> = [
+  { id: 'access', label: 'Get a copy of my data' },
+  { id: 'correction', label: 'Correct my data' },
+  { id: 'deletion', label: 'Delete my data' },
+  { id: 'objection', label: 'Stop or limit how my data is used' },
+  { id: 'other', label: 'Another privacy question' },
+];
+
+export const supportStatusLabels: Record<SupportStatus, string> = {
+  received: 'Received',
+  in_review: 'Being looked at',
+  waiting_on_requester: 'Waiting for your reply',
+  resolved: 'Resolved',
+};
+
+/** Days after a decision during which the requester can ask for it to be looked at again. */
+export const supportAppealWindowDays = 30;
+export const supportSummaryMaxLength = 140;
+export const supportMessageMaxLength = 4000;
+
+export type SupportCaseSummary = {
+  reference: string;
+  category: SupportCategory;
+  summary: string;
+  status: SupportStatus;
+  createdAt: string;
+  updatedAt: string;
+  /** Staff replies the requester hasn't read yet. */
+  unread: number;
+  isAppeal: boolean;
+};
+
+export type SupportCaseMessage = {
+  id: string;
+  author: 'you' | 'katondo' | 'system';
+  body: string;
+  createdAt: string;
+};
+
+export type SupportCaseDetail = SupportCaseSummary & {
+  subjectLabel: string | null;
+  reportReason: SupportReportReason | null;
+  privacyRequestType: PrivacyRequestType | null;
+  resolution: string | null;
+  resolvedAt: string | null;
+  messages: SupportCaseMessage[];
+  canReply: boolean;
+  canAppeal: boolean;
+  appealReference: string | null;
+  appealOfReference: string | null;
+};

@@ -98,6 +98,9 @@ export default async function ListingPage({ params }: Props) {
               <small>{listing.sellerId ? 'Visit shop' : 'Seller'}</small>
             </span>
           </a>
+          {features.support && (
+            <a className="report-link" href={`/help/new?category=report_listing&subject=${listing.id}&label=${encodeURIComponent(listing.title)}`}>Report this listing</a>
+          )}
         </div>
       </main>
       <SiteFooter countryName={market.countryName} />

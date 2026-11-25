@@ -39,6 +39,8 @@ This repository now has a deployment path for the web storefront on Netlify and 
 | `SELLER_ONBOARDING_ENABLED` | `true` only for the approved onboarding release |
 | `REVIEWS_ENABLED` | `false` until checkout creates real orders; then `true` |
 | `MESSAGING_ENABLED` | `false` until sign-in is live; then `true` |
+| `SUPPORT_ENABLED` | `false` until sign-in is live and complaint handling is staffed; then `true` |
+| `PRIVACY_REQUEST_RESPONSE_DAYS` | Days to answer a personal-data request (default `30`; confirm the legal deadline with counsel) |
 | `SELLER_DATA_PROCESSING_APPROVED` | `true` only after the data-processing release gate passes |
 | `SELLER_TERMS_VERSION` / `SELLER_TERMS_URL` | Exact published seller terms version and HTTPS URL |
 | `PRIVACY_NOTICE_VERSION` / `PRIVACY_NOTICE_URL` | Exact published privacy notice version and HTTPS URL |
@@ -95,4 +97,12 @@ Buyers message a seller from a listing (one conversation per buyer per listing; 
 Staff with the administrator, super administrator or customer support role see reported conversations in the staff workspace. The report list shows no message text; opening a reported conversation, removing a message and resolving a report are each written to `audit_events`. Message text is never copied into the activity ledger.
 
 Messaging is switched off with `MESSAGING_ENABLED=false` until sign-in is live. `GET /api/features` tells the web and mobile apps which optional features are on. Decide a message retention period with privacy counsel before switching on.
+
+## Help and complaints
+
+People open a request from `/help` (signed in) or report a listing, shop or review from its Report link. Each request gets a reference such as `KT-2026-00001`, a status (received, being looked at, waiting for your reply, resolved), and a two-way conversation with staff (`migration 011_support_cases.sql`, `apps/api/src/support.ts`). Personal-data requests can also be sent from `/help/privacy` without an account; that form is rate-limited in memory (addresses are never stored) and has a hidden field to catch bots. Replies to people without an account are recorded on the case but must be sent by email until email notifications exist.
+
+Target times by priority: urgent (scam or banned-item reports) first reply in 4 hours, decision in 2 days; high (order problems, other reports, privacy) 24 hours and 5 days; normal 48 hours and 10 days. Privacy requests use `PRIVACY_REQUEST_RESPONSE_DAYS`. The staff queue puts overdue cases first. Staff can reply, add internal notes, assign, change priority with a reason, decide, and reopen; each action is written to `audit_events` and shown in the case history. Staff can't handle their own request. A requester can ask once, within 30 days, for a decision to be looked at again; the original decision-maker can't handle that second look.
+
+Switched off with `SUPPORT_ENABLED=false` until sign-in is live and someone is assigned to answer requests. Before switching on: confirm response deadlines (consumer protection and data protection) with counsel, decide how to verify identity for privacy requests, and set up email so people without an account get replies.
 

@@ -71,6 +71,8 @@ export function capabilitiesForRoles(roles: UserRole[]) {
     viewReviews: has('super_administrator', 'administrator', 'customer_support', 'auditor'),
     moderateReviews: has('super_administrator', 'administrator', 'customer_support'),
     handleMessageReports: has('super_administrator', 'administrator', 'customer_support'),
+    viewSupportCases: has('super_administrator', 'administrator', 'customer_support', 'auditor'),
+    handleSupportCases: has('super_administrator', 'administrator', 'customer_support'),
   };
 }
 

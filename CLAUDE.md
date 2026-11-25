@@ -19,6 +19,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - Logo: the "Live" mark, a rounded K with an orange live dot (`apps/web/components/BrandMark.tsx`; tab icon `apps/web/app/icon.svg`; app icons in `apps/mobile/assets/`). The K follows the theme colour; the dot is always live orange. App icons have no ring. A ring pulses from the dot only in live moments (`BrandMark live`, page loading, live badges, header while an auction runs via `SiteHeader live`). Reduced-motion settings freeze it.
 - Reviews: two-way (buyer rates seller, seller rates buyer), one per side per completed order, 14-day window, hidden until both have reviewed or the window closes, one public seller reply, staff hide/restore with audited reason. API `apps/api/src/reviews.ts`; web `components/ShopReviews.tsx`, `/orders/[orderId]/review`, staff `admin/ReviewModerationPanel.tsx`. Gated by `REVIEWS_ENABLED` (keep **off** until checkout creates orders). Buyer ratings are never public. The `orders` table is minimal and will grow with checkout.
 - Messaging: buyer messages seller from a listing (one conversation per buyer per listing), safety warnings on phone numbers/emails/links/off-platform payment, block, report, rate limits; staff read only reported conversations, every read/removal/resolution audited; message text never in activity logs. API `apps/api/src/messaging.ts`; web `/messages`, `components/MessagesBadge.tsx`, staff `admin/ConversationReportsPanel.tsx`; app's listing screen links to the website's messages. Gated by `MESSAGING_ENABLED` (keep **off** until sign-in is live). `GET /api/features` reports which gated features are on.
+- Help and complaints: cases with reference `KT-YYYY-NNNNN`, categories (order problem, report listing/shop/review, account, seller decision, personal data, other), status, two-way conversation, staff internal notes, priority-based target times, overdue-first staff queue, one appeal ("second look") handled by a different staff member, all staff actions audited. Personal-data requests also work without an account (`/help/privacy`). API `apps/api/src/support.ts`; web `/help`, `/help/new`, `/help/privacy`, `/help/cases/[reference]`, Report links on listings/shops/reviews, staff `admin/SupportQueuePanel.tsx`. Gated by `SUPPORT_ENABLED` (keep **off** until sign-in is live and requests are staffed).
 - Design system (in `apps/web/app/styles.css`): malachite green brand, orange only for live/bidding, Apple system type (rounded for prices), chitenge-inspired patterns until real photos exist. Avoid generic AI-UI looks.
 
 ## Stack and layout
@@ -27,7 +28,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - `apps/api` Express API (OIDC/JWT auth boundary, roles, activity tracking, release controls).
 - `apps/mobile` Expo (iOS/Android), id `com.katondo.marketplace`. Native screens: home (`app/index.tsx`), listing (`app/listing/[id].tsx`), shop with reviews (`app/shop/[id].tsx`). Shared theme/logo/artwork/stars in `components/kit.tsx`. Browse, search, sell, account and order reviews still open the website until in-app sign-in exists.
 - `packages/contracts` shared TypeScript types. Must build before web/api.
-- `infra/postgres/migrations` 001–010 (latest: 010 messaging). `infra/keycloak` scaffold (not deployed).
+- `infra/postgres/migrations` 001–011 (latest: 011 help and complaints). `infra/keycloak` scaffold (not deployed).
 
 ## Commands
 - `npm run typecheck`, `npm run build`
@@ -41,7 +42,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - See `DEPLOYMENT.md` for env vars.
 
 ## Safety rules for working on this project
-- Feature gates stay **off** until real approvals exist: `AUTH_ENABLED`, `AUTH_DATA_PROCESSING_APPROVED`, seller-application flags, `REVIEWS_ENABLED`, `MESSAGING_ENABLED`. Never flip them to make something "work".
+- Feature gates stay **off** until real approvals exist: `AUTH_ENABLED`, `AUTH_DATA_PROCESSING_APPROVED`, seller-application flags, `REVIEWS_ENABLED`, `MESSAGING_ENABLED`, `SUPPORT_ENABLED`. Never flip them to make something "work".
 - Legal docs in `docs/legal` are **drafts**; never describe them as approved.
 - Don't call payments "escrow" until Zambian counsel / Bank of Zambia confirm.
 - Activity collection is opt-in, retention-limited, and never stores raw IPs.

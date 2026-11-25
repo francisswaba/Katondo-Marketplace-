@@ -112,6 +112,12 @@ export default function ListingScreen() {
         </View>
         {listing.sellerId && <Text style={{ color: theme.muted, fontSize: 24 }}>›</Text>}
       </Pressable>
+      {features?.support && (
+        <Pressable accessibilityRole="link" hitSlop={8} style={{ alignSelf: 'flex-start', marginTop: 16 }}
+          onPress={() => Linking.openURL(`${webUrl}/help/new?category=report_listing&subject=${listing.id}&label=${encodeURIComponent(listing.title)}`)}>
+          <Text style={s.report}>Report this listing</Text>
+        </Pressable>
+      )}
     </Screen>
   );
 }
@@ -137,4 +143,5 @@ const styles = (t: Theme) => StyleSheet.create({
   sellerName: { color: t.ink, fontSize: 16, fontWeight: '700' },
   ratingText: { color: t.ink, fontSize: 13, fontWeight: '600', fontFamily: rounded },
   link: { color: t.brand, fontSize: 13, fontWeight: '600' },
+  report: { color: t.muted, fontSize: 13, textDecorationLine: 'underline' },
 });

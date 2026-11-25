@@ -6,7 +6,7 @@ function formatDate(value: string, locale: string) {
 }
 
 /** A shop's rating breakdown and its buyer reviews. Renders nothing while reviews are switched off. */
-export default function ShopReviews({ data, shopName, locale }: { data: ShopReviewsResponse | null; shopName: string; locale: string }) {
+export default function ShopReviews({ data, shopName, locale, canReport = false }: { data: ShopReviewsResponse | null; shopName: string; locale: string; canReport?: boolean }) {
   if (!data?.enabled) return null;
   const { summary, reviews } = data;
 
@@ -52,6 +52,9 @@ export default function ShopReviews({ data, shopName, locale }: { data: ShopRevi
                     <strong>Reply from {shopName}</strong>
                     <p>{review.reply}</p>
                   </div>
+                )}
+                {canReport && (
+                  <a className="report-link" href={`/help/new?category=report_review&subject=${review.id}&label=${encodeURIComponent(`Review on ${review.listingTitle}`)}`}>Report review</a>
                 )}
               </li>
             ))}

@@ -592,3 +592,85 @@ a.card:hover .card-art .art-pattern, a.card:hover .card-art .art-image { transfo
   .thread-tools button { padding: 0 10px; }
   .bubble, .bubble-warning { max-width: 88%; }
 }
+
+/* ---------- Help and complaints ---------- */
+.report-link { display: inline-block; margin-top: 14px; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.report-link:hover { color: var(--ink); }
+.shop-review-list .report-link { margin-top: 10px; font-size: 12px; }
+
+.help-page { padding-top: 40px; padding-bottom: 80px; }
+.help-head { max-width: 760px; margin-bottom: 36px; }
+.help-head h1, .help-form-wrap h1 { margin: 0; font: 800 clamp(32px, 4.6vw, 52px)/1.02 var(--display); letter-spacing: -.04em; text-wrap: balance; }
+.help-head p { margin: 14px 0 0; max-width: 62ch; color: var(--muted); font-size: 17px; }
+.help-off { color: var(--muted); }
+.help-muted { color: var(--muted); }
+.help-note { color: var(--muted); font-size: 14px; }
+.help-note a, .studio-message a { color: var(--malachite); font-weight: 600; }
+
+.help-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+.help-layout h2 { margin: 0 0 16px; font: 700 21px var(--display); letter-spacing: -.01em; }
+.help-topics { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.help-topics a { display: grid; gap: 6px; height: 100%; padding: 18px; border-radius: 20px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; transition: border-color .15s ease; }
+.help-topics a:hover { border-color: var(--malachite); }
+.help-topics strong { font-size: 16px; }
+.help-topics span { color: var(--muted); font-size: 14px; line-height: 1.45; }
+.help-mine { position: sticky; top: 96px; padding: 22px; border-radius: var(--r-panel); background: var(--surface); border: 1px solid var(--line); }
+.help-signin p { margin: 0 0 14px; color: var(--muted); }
+.case-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.case-list li + li { border-top: 1px solid var(--line); }
+.case-list a { display: grid; gap: 4px; padding: 14px 0; color: var(--ink); text-decoration: none; }
+.case-list a:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+.case-top, .case-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.case-foot .help-muted { font-size: 13px; }
+.case-ref { font: 600 13px var(--rounded); color: var(--muted); font-variant-numeric: tabular-nums; }
+.case-status { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--paper); color: var(--muted); border: 1px solid var(--line); }
+.case-status.status-in_review { color: var(--malachite); border-color: var(--malachite); }
+.case-status.status-waiting_on_requester { color: var(--ink); background: var(--malachite-pale); border-color: transparent; }
+.case-status.status-resolved { color: var(--muted); }
+
+.help-form-wrap { max-width: 680px; margin: 0 auto; }
+.help-form { display: grid; gap: 18px; }
+.help-back { justify-self: start; color: var(--muted); font-size: 14px; text-decoration: none; }
+.help-back::before { content: '‹ '; }
+.help-back:hover { color: var(--ink); }
+.help-subject { margin: 0; padding: 12px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.help-choices { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
+.help-choices legend { margin-bottom: 8px; font-weight: 700; }
+.help-choices label { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
+.help-choices label.on { border-color: var(--malachite); box-shadow: inset 0 0 0 1px var(--malachite); }
+.help-choices input { margin-top: 4px; accent-color: var(--malachite); }
+.help-choices span { display: grid; gap: 2px; }
+.help-choices small { color: var(--muted); font-size: 13px; }
+.help-field { display: grid; gap: 8px; font-weight: 600; }
+.help-field input, .help-field select, .help-field textarea { width: 100%; min-height: 48px; padding: 12px 14px; border-radius: var(--r-input); border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 400 16px/1.45 var(--sans); }
+.help-field textarea { resize: vertical; }
+.help-field small { justify-self: end; color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.help-form > .button-primary { justify-self: start; }
+.case-ref-large { margin: 18px 0 6px; font: 700 15px var(--rounded); color: var(--malachite); font-variant-numeric: tabular-nums; }
+.case-view h1 { margin-bottom: 6px; }
+
+.case-steps { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 26px 0; padding: 0; counter-reset: step; }
+.case-steps li { position: relative; padding-top: 14px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.case-steps li::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; border-radius: 99px; background: var(--line); }
+.case-steps li.done::before, .case-steps li.current::before { background: var(--malachite); }
+.case-steps li.current { color: var(--ink); }
+
+.case-thread { list-style: none; margin: 0 0 24px; padding: 0; display: grid; gap: 12px; }
+.case-thread li { padding: 16px 18px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); }
+.case-thread li.from-katondo { border-color: var(--malachite); }
+.case-thread li.from-system { background: transparent; border-style: dashed; }
+.case-thread p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.case-author { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 700; }
+.case-author time { color: var(--muted); font-weight: 400; }
+.case-appeal { margin-top: 24px; padding: 20px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
+.case-appeal p { margin: 0 0 12px; }
+.case-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+@media (max-width: 860px) {
+  .help-layout { grid-template-columns: minmax(0, 1fr); }
+  .help-mine { position: static; order: -1; }
+}
+@media (max-width: 560px) {
+  .help-topics { grid-template-columns: minmax(0, 1fr); }
+  .help-page { padding-top: 24px; }
+}

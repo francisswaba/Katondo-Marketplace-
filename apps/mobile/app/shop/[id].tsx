@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import type { ShopReviewsResponse, StorefrontResponse } from '@katondo/contracts';
+import type { FeatureFlags, ShopReviewsResponse, StorefrontResponse } from '@katondo/contracts';
 import ListingTile from '../../components/ListingTile';
 import Screen from '../../components/Screen';
 import ShopReviews from '../../components/ShopReviews';
-import { BrandMark, Stars, TypeArt, fetchJson, formatPrice, ratingLabel, rounded, useTheme, type Theme } from '../../components/kit';
+import { BrandMark, Stars, TypeArt, fetchJson, formatPrice, ratingLabel, rounded, useTheme, webUrl, type Theme } from '../../components/kit';
 
 export default function ShopScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -13,15 +13,18 @@ export default function ShopScreen() {
   const s = styles(theme);
   const [data, setData] = useState<StorefrontResponse | null>(null);
   const [reviews, setReviews] = useState<ShopReviewsResponse | null>(null);
+  const [features, setFeatures] = useState<FeatureFlags | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading');
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     const shopId = encodeURIComponent(String(id));
-    const [shop, shopReviews] = await Promise.all([
+    const [shop, shopReviews, flags] = await Promise.all([
       fetchJson<StorefrontResponse>(`/api/shops/${shopId}`),
       fetchJson<ShopReviewsResponse>(`/api/shops/${shopId}/reviews`),
+      fetchJson<FeatureFlags>('/api/features'),
     ]);
+    setFeatures(flags);
     setData(shop);
     setReviews(shopReviews);
     setState(shop ? 'ready' : 'missing');
@@ -110,6 +113,13 @@ export default function ShopScreen() {
       )}
 
       <ShopReviews data={reviews} shopName={storefront.displayName} locale={market.locale} theme={theme} />
+
+      {features?.support && (
+        <Pressable accessibilityRole="link" hitSlop={8} style={{ alignSelf: 'flex-start', marginTop: 24 }}
+          onPress={() => Linking.openURL(`${webUrl}/help/new?category=report_shop&subject=${storefront.id}&label=${encodeURIComponent(storefront.displayName)}`)}>
+          <Text style={{ color: theme.muted, fontSize: 13, textDecorationLine: 'underline' }}>Report this shop</Text>
+        </Pressable>
+      )}
     </Screen>
   );
 }

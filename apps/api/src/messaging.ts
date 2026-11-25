@@ -14,6 +14,7 @@ import { recordActivity } from './activity.js';
 import { ensurePlatformUser, findPlatformUserId } from './identity.js';
 import { getMarketConfiguration } from './market.js';
 import { cleanReviewText, reviewsEnabled } from './reviews.js';
+import { supportEnabled } from './support.js';
 
 type Authenticate = (request: AuthenticatedRequest, response: Response, next: NextFunction) => Promise<void>;
 
@@ -130,7 +131,7 @@ export function createMessagingRouter(pool: Pool, authenticate: Authenticate) {
 
   // Public: which optional features are switched on, so apps can show or hide them.
   router.get('/api/features', (_request, response) => {
-    const payload: FeatureFlags = { reviews: reviewsEnabled(), messaging: messagingEnabled() };
+    const payload: FeatureFlags = { reviews: reviewsEnabled(), messaging: messagingEnabled(), support: supportEnabled() };
     response.json(payload);
   });
 

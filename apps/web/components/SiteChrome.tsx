@@ -67,12 +67,14 @@ export async function BottomNav({ active }: { active: NavKey }) {
   );
 }
 
-export function SiteFooter({ countryName }: { countryName: string }) {
+export async function SiteFooter({ countryName }: { countryName: string }) {
+  const features = await getFeatures();
   return (
     <footer className="site-footer">
       <a className="brand" href="/"><BrandMark />katondo</a>
       <p>Buy and sell with people and businesses across {countryName}.</p>
       <nav aria-label="Footer">
+        {features.support && <a href="/help">Help and complaints</a>}
         <a href="/sell">Become a seller</a>
         <a href="/account">Account settings</a>
         <a href="/admin">Katondo team</a>
