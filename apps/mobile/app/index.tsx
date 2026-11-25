@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Appearance, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme,
+  AccessibilityInfo, Animated, Appearance, Easing, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme,
 } from 'react-native';
 import { getProductType, productTypes, type CatalogueResponse, type Listing, type ProductType } from '@katondo/contracts';
 
@@ -101,8 +101,28 @@ function ListingTile({ listing, locale, theme }: { listing: Listing; locale: str
   );
 }
 
+/** A ring that ripples out from the live dot. Holds still when the phone asks for reduced motion. */
+function PulseRing({ size, colour = '#f2631c' }: { size: number; colour?: string }) {
+  const progress = useRef(new Animated.Value(0)).current;
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduced).catch(() => setReduced(false));
+  }, []);
+  useEffect(() => {
+    if (reduced) return;
+    const loop = Animated.loop(Animated.timing(progress, { toValue: 1, duration: 1800, easing: Easing.out(Easing.cubic), useNativeDriver: true }));
+    loop.start();
+    return () => loop.stop();
+  }, [progress, reduced]);
+  const scale = reduced ? 1.6 : progress.interpolate({ inputRange: [0, 1], outputRange: [1, 2.6] });
+  const opacity = reduced ? 0.35 : progress.interpolate({ inputRange: [0, 1], outputRange: [0.7, 0] });
+  return (
+    <Animated.View pointerEvents="none" style={{ position: 'absolute', width: size, height: size, borderRadius: size / 2, borderWidth: Math.max(1.5, size / 6), borderColor: colour, opacity, transform: [{ scale }] }} />
+  );
+}
+
 /** The Katondo "Live" mark: a rounded K (follows the theme colour) with the orange live dot. */
-function BrandMark({ size = 26, colour }: { size?: number; colour: string }) {
+function BrandMark({ size = 26, colour, live = false }: { size?: number; colour: string; live?: boolean }) {
   const u = size / 120;
   const bar = (cx: number, cy: number, length: number, angle: number) => ({
     position: 'absolute' as const, left: (cx - length / 2) * u, top: (cy - 12) * u,
@@ -113,7 +133,10 @@ function BrandMark({ size = 26, colour }: { size?: number; colour: string }) {
       <View style={{ position: 'absolute', left: 20 * u, top: 18 * u, width: 24 * u, height: 92 * u, borderRadius: 12 * u, backgroundColor: colour }} />
       <View style={bar(79, 83, 72.4, 38.3)} />
       <View style={bar(69, 50, 56.6, -47.5)} />
-      <View style={{ position: 'absolute', left: 86 * u, top: 8 * u, width: 24 * u, height: 24 * u, borderRadius: 12 * u, backgroundColor: '#f2631c' }} />
+      <View style={{ position: 'absolute', left: 86 * u, top: 8 * u, width: 24 * u, height: 24 * u, alignItems: 'center', justifyContent: 'center' }}>
+        {live && <PulseRing size={24 * u} />}
+        <View style={{ width: 24 * u, height: 24 * u, borderRadius: 12 * u, backgroundColor: '#f2631c' }} />
+      </View>
     </View>
   );
 }
@@ -186,10 +209,14 @@ export default function MarketplaceHome() {
           ))}
         </ScrollView>
 
-        <View style={s.live}><View style={s.liveDot} /><Text style={s.liveText}>Live auctions are on the way.</Text></View>
+        <View style={s.live}><View style={{ width: 9, height: 9, alignItems: 'center', justifyContent: 'center' }}><PulseRing size={9} colour={theme.live} /><View style={s.liveDot} /></View><Text style={s.liveText}>Live auctions are on the way.</Text></View>
 
         <Text style={s.sectionTitle}>Newest listings</Text>
-        {loading && <ActivityIndicator color={theme.brand} style={{ marginVertical: 24 }} />}
+        {loading && (
+          <View accessibilityRole="progressbar" accessibilityLabel="Loading listings" style={{ alignItems: 'center', marginVertical: 28 }}>
+            <BrandMark size={56} colour={theme.brand} live />
+          </View>
+        )}
         {!loading && !catalogue && <Text style={s.muted}>Listings couldn’t load. Check your connection and try again.</Text>}
         {!loading && catalogue && !listings.length && <Text style={s.muted}>No listings yet. Be the first to sell something.</Text>}
 

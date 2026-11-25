@@ -14,11 +14,15 @@ function Icon({ name }: { name: NavKey | 'search' }) {
   return <svg aria-hidden="true" viewBox="0 0 24 24"><path d={paths[name]} /></svg>;
 }
 
-export function SiteHeader({ query = '' }: { query?: string }) {
+/**
+ * `live` pulses the logo's dot while an auction is running. Pass it once live
+ * auctions exist; until then the header logo stays still.
+ */
+export function SiteHeader({ query = '', live = false }: { query?: string; live?: boolean }) {
   return (
     <header className="site-header">
-      <a className="brand" href="/" aria-label="Katondo home">
-        <BrandMark />
+      <a className="brand" href="/" aria-label={live ? 'Katondo home, live auction on now' : 'Katondo home'}>
+        <BrandMark live={live} />
         katondo
       </a>
       <form className="header-search" action="/browse" role="search">
