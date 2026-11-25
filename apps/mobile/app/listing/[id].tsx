@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { getProductType, type ListingResponse, type ShopReviewsResponse } from '@katondo/contracts';
+import { getProductType, type FeatureFlags, type ListingResponse, type ShopReviewsResponse } from '@katondo/contracts';
 import Screen from '../../components/Screen';
-import { BrandMark, Stars, TypeArt, fetchJson, formatPrice, ratingLabel, rounded, useTheme, type Theme } from '../../components/kit';
+import { BrandMark, Stars, TypeArt, fetchJson, formatPrice, ratingLabel, rounded, useTheme, webUrl, type Theme } from '../../components/kit';
 
 export default function ListingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -11,11 +11,16 @@ export default function ListingScreen() {
   const s = styles(theme);
   const [data, setData] = useState<ListingResponse | null>(null);
   const [reviews, setReviews] = useState<ShopReviewsResponse | null>(null);
+  const [features, setFeatures] = useState<FeatureFlags | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading');
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const listing = await fetchJson<ListingResponse>(`/api/listings/${encodeURIComponent(String(id))}`);
+    const [listing, flags] = await Promise.all([
+      fetchJson<ListingResponse>(`/api/listings/${encodeURIComponent(String(id))}`),
+      fetchJson<FeatureFlags>('/api/features'),
+    ]);
+    setFeatures(flags);
     setData(listing);
     setState(listing ? 'ready' : 'missing');
     const sellerId = listing?.listing.sellerId;
@@ -76,6 +81,12 @@ export default function ListingScreen() {
           <Text style={s.buyText}>Buy now</Text>
         </View>
       </View>
+      {features?.messaging && listing.sellerId && (
+        // Messaging opens on the website until the app has its own sign-in.
+        <Pressable accessibilityRole="link" onPress={() => Linking.openURL(`${webUrl}/messages?listing=${listing.id}`)} style={s.message}>
+          <Text style={s.messageText}>Message {listing.sellerName}</Text>
+        </Pressable>
+      )}
       <Text style={[s.muted, { marginTop: 8 }]}>Checkout opens once payments are switched on for {market.countryName}.</Text>
 
       <Text style={s.subheading} accessibilityRole="header">About this item</Text>
@@ -116,6 +127,8 @@ const styles = (t: Theme) => StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10, marginTop: 20 },
   buy: { flex: 1, height: 52, borderRadius: 26, backgroundColor: t.brand, alignItems: 'center', justifyContent: 'center' },
   buyText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  message: { height: 50, marginTop: 10, borderRadius: 25, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, alignItems: 'center', justifyContent: 'center' },
+  messageText: { color: t.ink, fontSize: 16, fontWeight: '600' },
   subheading: { color: t.ink, fontSize: 19, fontWeight: '700', marginTop: 28 },
   body: { color: t.muted, fontSize: 16, lineHeight: 24, marginTop: 6 },
   seller: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 26, padding: 14, borderRadius: 20, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface },

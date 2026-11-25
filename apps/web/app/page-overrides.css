@@ -11,3 +11,4 @@ h1 em,.seller-intro h1 em{font-style:normal;color:inherit;letter-spacing:inherit
 .danger-button{color:var(--danger)!important}
 .text-button{color:var(--muted)}
 .review-actions button[aria-pressed=true]{background:var(--malachite);border-color:var(--malachite);color:#fff}
+.staff-thread{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:8px}.staff-thread li{padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}.staff-thread li span{font-size:11px;color:var(--muted)}.staff-thread li p{margin:4px 0 8px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);font-size:14px}.staff-thread li.removed p{text-decoration:line-through;color:var(--muted)}.staff-thread small{font-size:11px;color:var(--danger)}.staff-thread button{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:6px 10px;font:600 11px var(--sans);cursor:pointer}

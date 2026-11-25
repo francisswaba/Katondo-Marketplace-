@@ -326,3 +326,48 @@ export type OrderReviewState = {
   /** For sellers: the buyer's rating from sellers' reviews. */
   buyerRating: RatingSummary | null;
 };
+
+/* ---------- Messaging ---------- */
+
+export const messageMaxLength = 2000;
+
+/** Safety flags the API adds to a message; the recipient sees a warning for each. */
+export type MessageFlag = 'phone_number' | 'email' | 'link' | 'off_platform_payment';
+
+export const messageFlagWarnings: Record<MessageFlag, string> = {
+  off_platform_payment: 'This message mentions paying outside Katondo. Pay through Katondo checkout so your money is protected.',
+  phone_number: 'This message contains a phone number. Keep the conversation here so Katondo can help if something goes wrong.',
+  email: 'This message contains an email address. Keep the conversation here so Katondo can help if something goes wrong.',
+  link: 'This message contains a link. Don’t enter passwords or payment details on sites you reach from a message.',
+};
+
+export type ConversationRole = 'buyer' | 'seller';
+
+export type ConversationSummary = {
+  id: string;
+  role: ConversationRole;
+  listingId: string | null;
+  listingTitle: string;
+  counterpartName: string;
+  lastMessage: string | null;
+  lastMessageAt: string;
+  unread: number;
+};
+
+export type ConversationMessage = {
+  id: string;
+  mine: boolean;
+  body: string | null;
+  removed: boolean;
+  flags: MessageFlag[];
+  createdAt: string;
+};
+
+export type ConversationDetail = ConversationSummary & {
+  messages: ConversationMessage[];
+  /** True when either side has blocked the other; nobody can send. */
+  closed: boolean;
+  blockedByMe: boolean;
+};
+
+export type FeatureFlags = { reviews: boolean; messaging: boolean };

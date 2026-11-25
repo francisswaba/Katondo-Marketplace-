@@ -3,7 +3,7 @@ import { getDisplayStyle, getProductType } from '@katondo/contracts';
 import PatternArt from '../../../components/PatternArt';
 import Stars, { ratingLabel } from '../../../components/Stars';
 import { BottomNav, SiteFooter, SiteHeader } from '../../../components/SiteChrome';
-import { getListing, getShopReviews } from '../../../lib/catalogue';
+import { getFeatures, getListing, getShopReviews } from '../../../lib/catalogue';
 import { formatMoney } from '../../../lib/market';
 
 // Serve a cached copy and refresh it in the background at most once a minute.
@@ -27,7 +27,10 @@ export default async function ListingPage({ params }: Props) {
   const data = await getListing(listingId);
   if (!data) notFound();
   const { listing, market } = data;
-  const reviews = listing.sellerId ? await getShopReviews(listing.sellerId) : null;
+  const [reviews, features] = await Promise.all([
+    listing.sellerId ? getShopReviews(listing.sellerId) : Promise.resolve(null),
+    getFeatures(),
+  ]);
   const rating = reviews?.enabled && reviews.summary.count > 0 && reviews.summary.average !== null ? reviews.summary : null;
   const type = getProductType(listing.productType);
   const style = getDisplayStyle(listing.displayStyle).id;
@@ -75,6 +78,9 @@ export default async function ListingPage({ params }: Props) {
             <button className="button-primary" type="button" disabled>Buy now</button>
             <button className="button-quiet" type="button" disabled>Save</button>
           </div>
+          {features.messaging && listing.sellerId && (
+            <a className="button-quiet message-seller" href={`/messages?listing=${listing.id}`}>Message {listing.sellerName}</a>
+          )}
           <p className="detail-note">Checkout opens once payments are switched on for {market.countryName}.</p>
 
           <h2>About this item</h2>

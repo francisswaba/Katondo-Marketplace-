@@ -20,6 +20,7 @@ import { recordActivity, scheduleActivityRetention } from './activity.js';
 import { ensurePlatformUser, findPlatformUserId } from './identity.js';
 import { readReleaseReadiness } from './release.js';
 import { createReviewsRouter } from './reviews.js';
+import { createMessagingRouter } from './messaging.js';
 import { getMarketConfiguration } from './market.js';
 
 const app = express();
@@ -487,6 +488,7 @@ app.use(createAdministrationRouter(pool, authenticate));
 app.use(createAccountRouter(pool, authenticate));
 app.use(createListingsRouter(pool, authenticate));
 app.use(createReviewsRouter(pool, authenticate));
+app.use(createMessagingRouter(pool, authenticate));
 
 scheduleActivityRetention(pool);
 

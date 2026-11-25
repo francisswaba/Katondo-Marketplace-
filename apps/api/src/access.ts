@@ -70,6 +70,7 @@ export function capabilitiesForRoles(roles: UserRole[]) {
     manageReleaseControls: has('super_administrator'),
     viewReviews: has('super_administrator', 'administrator', 'customer_support', 'auditor'),
     moderateReviews: has('super_administrator', 'administrator', 'customer_support'),
+    handleMessageReports: has('super_administrator', 'administrator', 'customer_support'),
   };
 }
 

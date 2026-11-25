@@ -38,6 +38,7 @@ This repository now has a deployment path for the web storefront on Netlify and 
 | `AUTH_REQUIRE_MFA_FOR_STAFF` | `true`; staff tokens must include an MFA authentication-method claim |
 | `SELLER_ONBOARDING_ENABLED` | `true` only for the approved onboarding release |
 | `REVIEWS_ENABLED` | `false` until checkout creates real orders; then `true` |
+| `MESSAGING_ENABLED` | `false` until sign-in is live; then `true` |
 | `SELLER_DATA_PROCESSING_APPROVED` | `true` only after the data-processing release gate passes |
 | `SELLER_TERMS_VERSION` / `SELLER_TERMS_URL` | Exact published seller terms version and HTTPS URL |
 | `PRIVACY_NOTICE_VERSION` / `PRIVACY_NOTICE_URL` | Exact published privacy notice version and HTTPS URL |
@@ -86,4 +87,12 @@ Use Netlify for the Next.js web storefront and Railway for the long-running Expr
 Buyers and sellers can review each other once per completed order, within 14 days of completion (migration `009_orders_reviews.sql`, `apps/api/src/reviews.ts`). Each review stays hidden until the other side has reviewed or the window has closed. A seller can reply publicly once to a buyer's review. Staff with the administrator, super administrator or customer support role can hide and restore reviews from the staff workspace; every change is written to `audit_events` with a reason.
 
 Reviews are switched off with `REVIEWS_ENABLED=false` until checkout creates orders. While off, the public shop endpoint reports `enabled: false` and the web app shows no ratings. Buyer ratings (sellers' reviews of buyers) are shown only to sellers with an order from that buyer, never publicly. Confirm this with privacy counsel before switching on.
+
+## Messaging
+
+Buyers message a seller from a listing (one conversation per buyer per listing; migration `010_messaging.sql`, `apps/api/src/messaging.ts`, web `/messages`). Phone numbers and emails are never shown by Katondo; if someone types one, or a link, or asks for payment outside Katondo (mobile money, bank transfer, deposits), the message is still delivered but the recipient sees a safety warning. Either side can block the other or report the conversation. Sending is rate-limited (30 messages per 10 minutes, 20 new conversations per day).
+
+Staff with the administrator, super administrator or customer support role see reported conversations in the staff workspace. The report list shows no message text; opening a reported conversation, removing a message and resolving a report are each written to `audit_events`. Message text is never copied into the activity ledger.
+
+Messaging is switched off with `MESSAGING_ENABLED=false` until sign-in is live. `GET /api/features` tells the web and mobile apps which optional features are on. Decide a message retention period with privacy counsel before switching on.
 

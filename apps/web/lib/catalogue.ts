@@ -1,4 +1,4 @@
-import type { CatalogueResponse, ListingResponse, ShopReviewsResponse, StorefrontResponse } from '@katondo/contracts';
+import type { CatalogueResponse, FeatureFlags, ListingResponse, ShopReviewsResponse, StorefrontResponse } from '@katondo/contracts';
 
 export const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
 
@@ -34,4 +34,9 @@ export function getStorefront(sellerId: string) {
 
 export function getShopReviews(sellerId: string) {
   return getJson<ShopReviewsResponse>(`/api/shops/${encodeURIComponent(sellerId)}/reviews`);
+}
+
+/** Optional features (reviews, messaging) switched on in the API. Off if the API can't be reached. */
+export async function getFeatures(): Promise<FeatureFlags> {
+  return (await getJson<FeatureFlags>('/api/features')) ?? { reviews: false, messaging: false };
 }
