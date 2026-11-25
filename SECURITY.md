@@ -1,22 +1,25 @@
 # Dependency security status
 
-Last reviewed: 2026-10-27 (npm audit refreshed before the Zambia-hosted identity scaffold deployment)
+Last reviewed: 2026-11-25
 
 ## Current audit
 
-The refreshed `npm audit` report contains 3 high findings, no moderate findings, and no critical findings. A compatible `npm audit fix` upgraded `node-forge` from 1.4.0 to 1.4.1 and removed its RSA signature-verification advisory. The remaining findings concern `zod` through Expo SDK 58's local CLI dependency chain (`expo` and `@expo/cli`).
+`npm audit` reports **0 vulnerabilities** (no low, moderate, high or critical findings).
 
-After applying compatible fixes, npm's forced recommendation is to install Expo 54.0.38. That is a breaking SDK change from this Expo SDK 58 application and must not be applied without a planned mobile-platform migration. The current latest Expo 58.0.19 and `@expo/cli` 58.1.15 still declare `zod` `^3.25.76`, while the advisory reports a fix in Zod 4.6.6; a transitive major-version override could break the CLI and was not applied.
+## What was fixed on 2026-11-25
 
-## Findings without an upstream fix
+- **Next.js 16.4.2 → 16.4.6** (web storefront). Clears three advisories affecting 16.0–16.4.4:
+  - [GHSA-mfr8-8qww-v76h](https://github.com/advisories/GHSA-mfr8-8qww-v76h): information disclosure across root params with `'use cache'` via `unstable_cache()`
+  - [GHSA-vc7v-qv4w-wrv8](https://github.com/advisories/GHSA-vc7v-qv4w-wrv8): cache leak across root param values in nested `'use cache'` functions
+  - [GHSA-7qx7-33qx-rqx2](https://github.com/advisories/GHSA-7qx7-33qx-rqx2): SVG rejection bypass in image optimisation
+- **Expo SDK 58 patch updates** (`expo` 58.0.26, `@expo/cli` 58.1.21 and related packages, all within SDK 58). Clears the earlier `zod`, `node-forge` and `glob` findings in the mobile build toolchain without an SDK migration.
+- **`minimatch` pinned to ^11.0.9** via `overrides` in the root `package.json` (plus a direct dev dependency in `apps/mobile` so npm installs it). Clears [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249) (denial of service via glob-part amplification), which reached the project only through `@expo/fingerprint`. Verified that `@expo/fingerprint` loads 11.0.9 and computes a project fingerprint, and that iOS/Android exports still build.
 
-- Zod versions before 4.6.6 have a high-severity memory-exhaustion advisory for oversized constrained collections: [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5). The vulnerable package is transitive through the Expo CLI used for local mobile exports.
-- The web and API runtime dependency findings reported in earlier audits are cleared. The remaining findings affect the Expo development/build toolchain; treat native builds and signing as a separate security gate and keep the build environment restricted.
+npm's own suggested fix for the last finding was to downgrade to Expo 52, a breaking SDK change. It was not applied.
 
 ## Handling
 
 - Keep Expo/Metro development services on trusted local networks; do not expose the development server publicly.
-- Do not use Expo's transitive `node-forge` as an application trust or certificate-verification boundary.
-- Re-run `npm audit` when Expo or React Native publishes compatible SDK updates. Upgrade Expo SDKs incrementally and verify with `npx expo install --check`, Expo Doctor, type checks, and iOS/Android bundle exports.
-- Review each advisory's affected code path before applying a transitive override or accepting a release candidate. Never use `npm audit fix --force` to silence the report.
-- Treat the remaining findings as unresolved for production readiness until patched upstream or individually assessed and accepted.
+- Re-run `npm audit` before each release and when Expo, React Native or Next.js publish updates. Upgrade Expo SDKs incrementally and verify with `npx expo install --check`, Expo Doctor, type checks, and iOS/Android bundle exports.
+- When Expo itself depends on `minimatch` 11.0.1 or later, remove the `minimatch` override and the `apps/mobile` dev dependency.
+- Review each advisory's affected code path before applying a transitive override. Never use `npm audit fix --force` to silence the report.

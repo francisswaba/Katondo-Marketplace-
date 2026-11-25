@@ -2,9 +2,16 @@ import type { CatalogueResponse, ListingResponse, StorefrontResponse } from '@ka
 
 export const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
 
+/**
+ * Catalogue data is cached for a minute and refreshed in the background, so pages
+ * can be served straight from the CDN instead of waiting on the API every visit.
+ * New listings appear within about a minute.
+ */
+export const catalogueRevalidateSeconds = 60;
+
 async function getJson<T>(path: string): Promise<T | null> {
   try {
-    const response = await fetch(`${apiUrl}${path}`, { cache: 'no-store' });
+    const response = await fetch(`${apiUrl}${path}`, { next: { revalidate: catalogueRevalidateSeconds } });
     if (!response.ok) return null;
     return (await response.json()) as T;
   } catch {

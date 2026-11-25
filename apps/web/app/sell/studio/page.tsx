@@ -3,6 +3,9 @@ import { BottomNav, SiteHeader } from '../../../components/SiteChrome';
 import { getCatalogue } from '../../../lib/catalogue';
 import { fallbackMarket } from '../../../lib/market';
 
+// Serve a cached copy and refresh it in the background at most once a minute.
+export const revalidate = 60;
+
 export const metadata = { title: 'Listing studio | Katondo' };
 
 export default async function StudioPage() {

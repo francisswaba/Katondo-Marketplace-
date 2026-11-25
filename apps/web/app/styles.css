@@ -366,6 +366,10 @@ a.card:hover .card-art .art-pattern, a.card:hover .card-art .art-image { transfo
 .preview-frame .card-compact { border-top: 0; }
 .preview-empty { padding: 60px 20px; text-align: center; color: var(--muted); }
 
+/* Skip layout and painting for sections until they scroll near the screen. */
+.section, .sell-band, .site-footer { content-visibility: auto; contain-intrinsic-size: auto 600px; }
+.site-footer { contain-intrinsic-size: auto 120px; }
+
 /* Responsive */
 @media (max-width: 1000px) {
   .header-nav > a:not(.button-primary) { display: none; }

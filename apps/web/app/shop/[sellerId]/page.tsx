@@ -5,6 +5,14 @@ import { BottomNav, SiteFooter, SiteHeader } from '../../../components/SiteChrom
 import { getStorefront } from '../../../lib/catalogue';
 import { formatMoney } from '../../../lib/market';
 
+// Serve a cached copy and refresh it in the background at most once a minute.
+export const revalidate = 60;
+
+// No pages are built ahead of time; each one is cached the first time someone opens it.
+export function generateStaticParams() {
+  return [];
+}
+
 type Props = { params: Promise<{ sellerId: string }> };
 
 export default async function ShopPage({ params }: Props) {

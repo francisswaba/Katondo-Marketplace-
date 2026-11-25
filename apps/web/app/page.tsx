@@ -5,6 +5,9 @@ import { BottomNav, SiteFooter, SiteHeader } from '../components/SiteChrome';
 import { getCatalogue } from '../lib/catalogue';
 import { fallbackMarket } from '../lib/market';
 
+// Serve a cached copy and refresh it in the background at most once a minute.
+export const revalidate = 60;
+
 export default async function Home() {
   const catalogue = await getCatalogue();
   const market = catalogue?.market ?? fallbackMarket();

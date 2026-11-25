@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.3.0",
+    "minimatch": "^11.0.9",
     "typescript": "~6.0.3"
   }
 }
