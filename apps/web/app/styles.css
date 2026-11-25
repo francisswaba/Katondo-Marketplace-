@@ -13,6 +13,7 @@
   --live: #f2631c;
   --live-pale: #fff0e6;
   --on-dark: #eef6f2;
+  --danger: #b42318;
 
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
   --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Segoe UI", Roboto, sans-serif;
@@ -34,13 +35,13 @@
   :root:not([data-theme="light"]) {
     --paper: #08130e; --surface: #0f1f18; --ink: #e9f2ed; --muted: #95a79e; --line: #1f3329;
     --malachite: #2fbf87; --malachite-deep: #062a1e; --malachite-pale: #12382a; --live-pale: #3a1f10;
-    --green: #5fd3a3; color-scheme: dark;
+    --green: #5fd3a3; --danger: #ff8a7a; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --paper: #08130e; --surface: #0f1f18; --ink: #e9f2ed; --muted: #95a79e; --line: #1f3329;
   --malachite: #2fbf87; --malachite-deep: #062a1e; --malachite-pale: #12382a; --live-pale: #3a1f10;
-  --green: #5fd3a3; color-scheme: dark;
+  --green: #5fd3a3; --danger: #ff8a7a; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -64,6 +65,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .button-quiet { background: var(--surface); border-color: var(--line); color: var(--ink); }
 .button-light { background: #fff; color: #062a1e; }
 button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Light/dark switch */
+.theme-toggle { display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.theme-toggle:hover { border-color: var(--malachite); color: var(--malachite); }
+.theme-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Header */
 .site-header {

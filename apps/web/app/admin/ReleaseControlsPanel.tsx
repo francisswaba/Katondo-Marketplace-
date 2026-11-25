@@ -74,7 +74,7 @@ export default function ReleaseControlsPanel({ token, canManage }: { token: stri
 
   return (
     <section className="admin-section release-controls">
-      <div className="admin-section-title"><div><p className="eyebrow">RELEASE GOVERNANCE · {readiness?.market.countryCode || 'MARKET'}</p><h2>Secure sign-in and policy approvals</h2></div><span className={readiness?.onboardingOpen ? 'release-open' : 'release-closed'}>{readiness?.onboardingOpen ? 'Onboarding open' : 'Onboarding closed'}</span></div>
+      <div className="admin-section-title"><div><p className="eyebrow">Release governance</p><h2>Secure sign-in and policy approvals</h2></div><span className={readiness?.onboardingOpen ? 'release-open' : 'release-closed'}>{readiness?.onboardingOpen ? 'Onboarding open' : 'Onboarding closed'}</span></div>
       <p className="section-copy">These records document external approvals; they do not create legal approval. Seller onboarding stays closed unless every approval is effective and every deployment check passes.</p>
       {message && <p className="admin-flash">{message}</p>}
       {readiness && <div className="release-checks">{Object.entries(readiness.checks).map(([key, passed]) => <span className={passed ? 'passed' : 'failed'} key={key}>{passed ? '✓' : '×'} {label(key)}</span>)}</div>}

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import ThemeToggle from '../../../components/ThemeToggle';
 import { useEffect, useState } from 'react';
 import { getUserManager } from '../../../lib/oidc';
 
@@ -27,9 +28,9 @@ export default function AuthCallbackPage() {
 
   return (
     <main className="auth-callback">
-      <Link className="wordmark" href="/">katondo<span>.</span></Link>
+      <Link className="wordmark" href="/">katondo</Link><ThemeToggle />
       <div className="callback-card" role="status">
-        <span className="callback-mark">✳</span>
+
         <h1>{error ? 'Sign-in needs attention' : 'Completing sign-in'}</h1>
         <p>{error || 'Please wait while we securely return you to Katondo.'}</p>
         {error && <Link className="primary-button" href="/">Return to Katondo</Link>}

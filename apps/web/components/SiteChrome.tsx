@@ -1,3 +1,5 @@
+import ThemeToggle from './ThemeToggle';
+
 type NavKey = 'home' | 'browse' | 'sell' | 'account';
 
 function Icon({ name }: { name: NavKey | 'search' }) {
@@ -28,6 +30,7 @@ export function SiteHeader({ query = '' }: { query?: string }) {
         <a href="/account">Account</a>
         <a className="button-primary" href="/sell/studio">Sell an item</a>
       </nav>
+      <ThemeToggle />
     </header>
   );
 }

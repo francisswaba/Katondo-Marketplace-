@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import ThemeToggle, { setTheme } from '../../components/ThemeToggle';
 import { FormEvent, useEffect, useState } from 'react';
 import type { User } from 'oidc-client-ts';
 import type { MarketConfiguration } from '@katondo/contracts';
@@ -41,8 +42,7 @@ async function readError(response: Response) {
 }
 
 function applyTheme(theme: Preferences['theme']) {
-  document.documentElement.dataset.theme = theme;
-  window.localStorage.setItem('katondo-theme', theme);
+  setTheme(theme);
 }
 
 export default function AccountSettingsClient() {
@@ -115,23 +115,23 @@ export default function AccountSettingsClient() {
     }
   }
 
-  if (loading) return <main className="account-gate"><Link className="wordmark" href="/">katondo<span>.</span></Link><p>Opening your account…</p></main>;
+  if (loading) return <main className="account-gate"><Link className="wordmark" href="/">katondo</Link><ThemeToggle /><p>Opening your account…</p></main>;
 
   if (!user || !data || !preferences) {
-    return <main className="account-gate"><Link className="wordmark" href="/">katondo<span>.</span></Link><section className="account-login-card"><p className="eyebrow">YOUR ACCOUNT</p><h1>Settings that travel with you.</h1><p>Sign in to manage password and security, contact details, appearance, and notifications.</p>{message && <p className="form-message">{message}</p>}{isOidcConfigured() ? <button className="primary-button button-reset" type="button" onClick={signIn}>Sign in to your account <span>→</span></button> : <p className="account-note">Account sign-in is not configured for this environment.</p>}</section></main>;
+    return <main className="account-gate"><Link className="wordmark" href="/">katondo</Link><ThemeToggle /><section className="account-login-card"><p className="eyebrow">Your account</p><h1>Settings that travel with you.</h1><p>Sign in to manage password and security, contact details, appearance, and notifications.</p>{message && <p className="form-message">{message}</p>}{isOidcConfigured() ? <button className="primary-button button-reset" type="button" onClick={signIn}>Sign in to your account</button> : <p className="account-note">Account sign-in is not configured for this environment.</p>}</section></main>;
   }
 
   return (
     <main className="account-shell">
-      <header className="admin-topbar"><div><Link className="wordmark" href="/">katondo<span>.</span></Link><span className="admin-badge">Account</span></div><div className="admin-user"><span>{data.account.displayName || data.account.email || 'Katondo member'}</span><button className="text-button" type="button" onClick={signOut}>Sign out</button></div></header>
-      <section className="account-heading"><p className="eyebrow">ACCOUNT SETTINGS</p><h1>Make Katondo work for you.</h1><p>Security details stay with the approved sign-in provider. Marketplace preferences are stored by Katondo.</p></section>
+      <header className="admin-topbar"><div><Link className="wordmark" href="/">katondo</Link><span className="admin-badge">Account</span></div><div className="admin-user"><span>{data.account.displayName || data.account.email || 'Katondo member'}</span><button className="text-button" type="button" onClick={signOut}>Sign out</button><ThemeToggle /></div></header>
+      <section className="account-heading"><p className="eyebrow">Account settings</p><h1>Make Katondo work for you.</h1><p>Security details stay with the approved sign-in provider. Marketplace preferences are stored by Katondo.</p></section>
       {message && <p className="admin-flash">{message}</p>}
       <section className="account-grid">
-        <article className="account-card"><p className="eyebrow">SIGN-IN & SECURITY</p><h2>Password and account security</h2><p>Update your password, recovery methods, multi-factor authentication and verified contact details securely with the sign-in provider.</p>{accountUrl ? <a className="primary-button" href={accountUrl} target="_blank" rel="noreferrer">Manage password and security <span>↗</span></a> : <p className="account-warning">The administrator must configure the identity provider’s account-management URL before password changes are available.</p>}</article>
-        <article className="account-card"><p className="eyebrow">IDENTITY</p><h2>Your verified account</h2><dl><div><dt>Name</dt><dd>{data.account.displayName || 'Managed by sign-in provider'}</dd></div><div><dt>Email</dt><dd>{data.account.email || 'Not provided'}</dd></div><div><dt>Phone</dt><dd>{data.account.phone || 'Not provided'}</dd></div></dl>{accountUrl && <a className="text-link" href={accountUrl} target="_blank" rel="noreferrer">Update contact details ↗</a>}</article>
+        <article className="account-card"><p className="eyebrow">Sign-in and security</p><h2>Password and account security</h2><p>Update your password, recovery methods, multi-factor authentication and verified contact details securely with the sign-in provider.</p>{accountUrl ? <a className="primary-button" href={accountUrl} target="_blank" rel="noreferrer">Manage password and security</a> : <p className="account-warning">The administrator must configure the identity provider’s account-management URL before password changes are available.</p>}</article>
+        <article className="account-card"><p className="eyebrow">Identity</p><h2>Your verified account</h2><dl><div><dt>Name</dt><dd>{data.account.displayName || 'Managed by sign-in provider'}</dd></div><div><dt>Email</dt><dd>{data.account.email || 'Not provided'}</dd></div><div><dt>Phone</dt><dd>{data.account.phone || 'Not provided'}</dd></div></dl>{accountUrl && <a className="text-link" href={accountUrl} target="_blank" rel="noreferrer">Update contact details</a>}</article>
       </section>
       <form className="account-preferences" onSubmit={save}>
-        <div className="admin-section-title"><div><p className="eyebrow">PREFERENCES</p><h2>Marketplace experience</h2></div><span>Applied to your account</span></div>
+        <div className="admin-section-title"><div><p className="eyebrow">Preferences</p><h2>Marketplace experience</h2></div><span>Applied to your account</span></div>
         <div className="preference-selects"><label>Language and region<select value={preferences.locale} onChange={(event) => updatePreference('locale', event.target.value)}>{data.market.supportedLocales.map((locale) => <option value={locale} key={locale}>{localeLabel(locale)}</option>)}</select></label><label>Appearance<select value={preferences.theme} onChange={(event) => updatePreference('theme', event.target.value as Preferences['theme'])}><option value="system">Use device setting</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
         <div className="preference-list">
           <PreferenceRow label="Marketplace updates" detail="Important product and service announcements." checked={preferences.marketplaceUpdates} onChange={(value) => updatePreference('marketplaceUpdates', value)} />
@@ -142,7 +142,7 @@ export default function AccountSettingsClient() {
         </div>
         <button className="primary-button button-reset" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</button>
       </form>
-      <footer><Link className="wordmark" href="/">katondo<span>.</span></Link><p>Your account. Your choices.</p><span><Link className="staff-link" href="/">Marketplace</Link>{preferences.available.staff && <>&nbsp; · &nbsp;<Link className="staff-link" href="/admin">Staff workspace</Link></>}</span></footer>
+      <footer><Link className="wordmark" href="/">katondo</Link><p>Your account. Your choices.</p><span><Link className="staff-link" href="/">Marketplace</Link>{preferences.available.staff && <>&nbsp; · &nbsp;<Link className="staff-link" href="/admin">Staff workspace</Link></>}</span></footer>
     </main>
   );
 }

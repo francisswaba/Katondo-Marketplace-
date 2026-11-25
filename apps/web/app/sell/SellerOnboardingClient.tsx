@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import ThemeToggle from '../../components/ThemeToggle';
 import { FormEvent, useEffect, useState } from 'react';
 import type { User } from 'oidc-client-ts';
 import type { MarketConfiguration } from '@katondo/contracts';
@@ -141,27 +142,28 @@ export default function SellerOnboardingClient() {
   return (
     <main className="page-shell seller-onboarding">
       <header className="topbar">
-        <Link className="wordmark" href="/">katondo<span>.</span></Link>
+        <Link className="wordmark" href="/">katondo</Link>
         <div className="seller-header-actions">
           {user && <Link className="text-link" href="/account">Account settings</Link>}
           {user && <button className="text-button" type="button" onClick={signOut}>Sign out</button>}
           <Link className="text-link" href="/">Back to marketplace</Link>
+          <ThemeToggle />
         </div>
       </header>
 
       <section className="seller-intro">
-        <p className="eyebrow">SELL WITH KATONDO · {config?.market.countryCode || 'MARKETPLACE'}</p>
+        <p className="eyebrow">Sell with Katondo</p>
         <h1>Good things start<br />with <em>good people.</em></h1>
         <p className="seller-lede">Create a storefront for the things you make, find, or have loved. Every seller is reviewed before listings can go live.</p>
         {loading && <div className="seller-availability" role="status"><span className="availability-dot" /><div><strong>Checking application availability</strong><p>This only takes a moment.</p></div></div>}
-        {!loading && !canApply && <div className="seller-availability" role="status"><span className="availability-dot" /><div><strong>Seller applications aren’t open yet</strong><p>Secure sign-in, approved policies, and the release controls must all be active before applications can be collected.</p>{canSignIn && !user && <button className="primary-button button-reset" type="button" onClick={signIn}>Sign in to check status <span>→</span></button>}</div></div>}
-        {!loading && canApply && !user && <div className="seller-availability available" role="status"><span className="availability-dot" /><div><strong>Seller applications are open</strong><p>Sign in with your verified account to start or check your application.</p><button className="primary-button button-reset" type="button" onClick={signIn}>Sign in to apply <span>→</span></button></div></div>}
+        {!loading && !canApply && <div className="seller-availability" role="status"><span className="availability-dot" /><div><strong>Seller applications aren’t open yet</strong><p>Secure sign-in, approved policies, and the release controls must all be active before applications can be collected.</p>{canSignIn && !user && <button className="primary-button button-reset" type="button" onClick={signIn}>Sign in to check status</button>}</div></div>}
+        {!loading && canApply && !user && <div className="seller-availability available" role="status"><span className="availability-dot" /><div><strong>Seller applications are open</strong><p>Sign in with your verified account to start or check your application.</p><button className="primary-button button-reset" type="button" onClick={signIn}>Sign in to apply</button></div></div>}
         {message && <p className="form-message" role="status">{message}</p>}
       </section>
 
       {canSignIn && user && application && (
         <section className="application-status">
-          <p className="eyebrow">APPLICATION RECEIVED</p>
+          <p className="eyebrow">Application received</p>
           <h2>{application.display_name || application.displayName || 'Your storefront'}</h2>
           <p>Your application is <strong>{status.replace('_', ' ')}</strong>. We will update this status after review.</p>
           <dl><div><dt>Seller type</dt><dd>{application.seller_type || application.sellerType}</dd></div><div><dt>City</dt><dd>{application.city || 'Submitted'}</dd></div></dl>
@@ -170,7 +172,7 @@ export default function SellerOnboardingClient() {
 
       {canApply && user && !applicationLoading && !application && (
         <section className="seller-form-section">
-          <div><p className="eyebrow">YOUR APPLICATION</p><h2>Tell us about your storefront</h2><p>Use your legal details. We only ask for the information needed for this first review.</p></div>
+          <div><p className="eyebrow">Your application</p><h2>Tell us about your storefront</h2><p>Use your legal details. We only ask for the information needed for this first review.</p></div>
           <form className="seller-form" onSubmit={submitApplication}>
             <fieldset className="seller-type-choice"><legend>Seller type</legend><label><input type="radio" name="sellerType" checked={sellerType === 'individual'} onChange={() => setSellerType('individual')} /> Individual</label><label><input type="radio" name="sellerType" checked={sellerType === 'business'} onChange={() => setSellerType('business')} /> Registered business</label></fieldset>
             <label>Legal name<input name="legalName" required minLength={2} maxLength={160} autoComplete="name" /></label>
@@ -179,22 +181,22 @@ export default function SellerOnboardingClient() {
             {sellerType === 'business' && <label>Business registration number<input name="businessRegistrationNumber" required minLength={2} maxLength={80} /></label>}
             <label className="check-row"><input type="checkbox" name="acceptSellerTerms" required /><span>I accept the <a href={config!.sellerTerms!.url} target="_blank" rel="noreferrer">Seller Terms ({config!.sellerTerms!.version})</a>.</span></label>
             <label className="check-row"><input type="checkbox" name="acknowledgePrivacyNotice" required /><span>I have read the <a href={config!.privacyNotice!.url} target="_blank" rel="noreferrer">Privacy Notice ({config!.privacyNotice!.version})</a>.</span></label>
-            <button className="primary-button button-reset" type="submit" disabled={submitting}>{submitting ? 'Submitting…' : 'Submit application'} <span>→</span></button>
+            <button className="primary-button button-reset" type="submit" disabled={submitting}>{submitting ? 'Submitting…' : 'Submit application'}</button>
           </form>
         </section>
       )}
 
       <section className="seller-types">
-        <article><span className="seller-step">01 · INDIVIDUAL</span><h2>Sell something personal</h2><p>For people giving a pre-loved item a new home. The application asks for your legal name, storefront name, and city.</p></article>
-        <article><span className="seller-step">02 · REGISTERED BUSINESS</span><h2>Grow your business</h2><p>For registered businesses building a customer base. The application also asks for your business registration number.</p></article>
+        <article><span className="seller-step">Individual seller</span><h2>Sell something personal</h2><p>For people giving a pre-loved item a new home. The application asks for your legal name, storefront name, and city.</p></article>
+        <article><span className="seller-step">Registered business</span><h2>Grow your business</h2><p>For registered businesses building a customer base. The application also asks for your business registration number.</p></article>
       </section>
 
       <section className="seller-review">
-        <p className="eyebrow">A CAREFUL START</p><h2>How seller review works</h2>
+        <p className="eyebrow">A careful start</p><h2>How seller review works</h2>
         <ol><li><span>01</span><div><strong>Apply securely</strong><p>Sign in, choose your seller type, and share the details needed to review your storefront.</p></div></li><li><span>02</span><div><strong>We review your application</strong><p>Your application stays private and pending review. We explain any additional verification before requesting it.</p></div></li><li><span>03</span><div><strong>Get approved before selling</strong><p>Only approved sellers can publish listings. Approval and document checks are not automatic.</p></div></li></ol>
       </section>
 
-      <footer><Link className="wordmark" href="/">katondo<span>.</span></Link><p>Good finds. Good people. Right here.</p><span>Made for {marketName}&nbsp; ✳</span></footer>
+      <footer><Link className="wordmark" href="/">katondo</Link><p>Good finds. Good people. Right here.</p><span>Made for {marketName}</span></footer>
     </main>
   );
 }

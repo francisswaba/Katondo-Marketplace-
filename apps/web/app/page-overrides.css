@@ -1,0 +1,12 @@
+/* Loaded last: brings the seller, account and staff pages in line with the Katondo design system. */
+h1 em,.seller-intro h1 em{font-style:normal;color:inherit;letter-spacing:inherit;font-family:inherit;font-weight:inherit}
+.seller-intro h1,.admin-heading h1,.account-heading h1,.account-login-card h1,.admin-login-card h1,.callback-card h1{color:var(--ink);font-family:var(--display);font-weight:800;letter-spacing:-.04em;line-height:1}
+.seller-types h2,.seller-review h2,.seller-form-section h2,.application-status h2,.admin-section-title h2,.account-card h2{color:var(--ink)}
+.seller-header-actions{display:flex;align-items:center;gap:20px}
+.admin-topbar{height:72px}.admin-user{display:flex;align-items:center;gap:16px}
+.admin-badge{border-radius:999px;padding:6px 12px;font-size:12px;letter-spacing:0;text-transform:none;background:var(--malachite-pale);color:var(--malachite)}
+.role-list span,.status-pill,.review-card-head>strong{text-transform:none;letter-spacing:0;font-size:12px}
+.account-gate,.admin-gate,.auth-callback{position:relative}
+.account-gate>.theme-toggle,.admin-gate>.theme-toggle,.auth-callback>.theme-toggle{position:absolute;top:24px;right:32px}
+.danger-button{color:var(--danger)!important}
+.text-button{color:var(--muted)}

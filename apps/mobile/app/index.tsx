@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme,
+  ActivityIndicator, Appearance, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme,
 } from 'react-native';
 import { getProductType, productTypes, type CatalogueResponse, type Listing, type ProductType } from '@katondo/contracts';
 
@@ -101,8 +101,31 @@ function ListingTile({ listing, locale, theme }: { listing: Listing; locale: str
   );
 }
 
+/** Light/dark switch. Overrides the phone's setting for as long as the app is open. */
+function ThemeSwitch({ theme, isDark }: { theme: Theme; isDark: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      onPress={() => Appearance.setColorScheme(isDark ? 'light' : 'dark')}
+      hitSlop={8}
+      style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: theme.line, backgroundColor: theme.surface, alignItems: 'center', justifyContent: 'center' }}
+    >
+      {isDark
+        ? <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: theme.ink }} />
+        : (
+          <View style={{ width: 18, height: 18 }}>
+            <View style={{ position: 'absolute', width: 18, height: 18, borderRadius: 9, backgroundColor: theme.ink }} />
+            <View style={{ position: 'absolute', left: 6, top: -3, width: 16, height: 16, borderRadius: 8, backgroundColor: theme.surface }} />
+          </View>
+        )}
+    </Pressable>
+  );
+}
+
 export default function MarketplaceHome() {
-  const theme = useColorScheme() === 'dark' ? dark : light;
+  const isDark = useColorScheme() === 'dark';
+  const theme = isDark ? dark : light;
   const s = styles(theme);
   const [catalogue, setCatalogue] = useState<CatalogueResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,9 +147,12 @@ export default function MarketplaceHome() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.paper }}>
       <ScrollView contentContainerStyle={s.content}>
-        <View style={s.brandRow}>
-          <View style={s.brandMark} />
-          <Text style={s.brand}>katondo</Text>
+        <View style={s.topRow}>
+          <View style={s.brandRow}>
+            <View style={s.brandMark} />
+            <Text style={s.brand}>katondo</Text>
+          </View>
+          <ThemeSwitch theme={theme} isDark={isDark} />
         </View>
         <Text style={s.heading}>Buy and sell anything in {countryName}.</Text>
         <View style={s.search}>
@@ -184,6 +210,7 @@ export default function MarketplaceHome() {
 
 const styles = (t: Theme) => StyleSheet.create({
   content: { padding: 18, paddingTop: 60, paddingBottom: 48 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   brandMark: { width: 20, height: 20, borderTopLeftRadius: 6, borderTopRightRadius: 6, borderBottomRightRadius: 6, borderBottomLeftRadius: 10, backgroundColor: t.brand },
   brand: { color: t.ink, fontSize: 21, fontWeight: '800', letterSpacing: -0.9 },
