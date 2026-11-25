@@ -1,19 +1,117 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import type { CatalogueResponse, Listing } from '@katondo/contracts';
+import {
+  ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme,
+} from 'react-native';
+import { getProductType, productTypes, type CatalogueResponse, type Listing, type ProductType } from '@katondo/contracts';
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
 const webUrl = (process.env.EXPO_PUBLIC_WEB_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+
+/** Same per-type colours as the website's pattern artwork. */
+const typePalette: Record<ProductType, [string, string]> = {
+  fashion: ['#1F5D7A', '#9FD3E6'], electronics: ['#0A3D2E', '#3BD18F'], vehicles: ['#1C2420', '#BFCBC4'],
+  property: ['#0E7C57', '#BFEBD7'], home: ['#9A5A2C', '#F0CFAF'], food: ['#D9A821', '#5C3F05'],
+  agriculture: ['#5E7A31', '#E1EBC2'], handmade: ['#6E3326', '#E8A97F'], services: ['#36437F', '#C7CEF4'], general: ['#2B3832', '#A7B7AE'],
+};
+
+const light = { paper: '#f4f7f5', surface: '#ffffff', ink: '#0f1a15', muted: '#5b6962', line: '#dde4e0', brand: '#0d7a55', brandPale: '#dcf1e6', live: '#f2631c', livePale: '#fff0e6' };
+const dark = { paper: '#08130e', surface: '#0f1f18', ink: '#e9f2ed', muted: '#95a79e', line: '#1f3329', brand: '#2fbf87', brandPale: '#12382a', live: '#f2631c', livePale: '#3a1f10' };
+type Theme = typeof light;
+const rounded = Platform.select({ ios: 'ui-rounded', default: undefined });
 
 function formatPrice(priceMinor: number, currency: string, locale: string) {
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(priceMinor / 100);
 }
 
+/** A simple striped stand-in for the website's chitenge patterns until photos are uploaded. */
+function TypeArt({ type, height, radius = 20 }: { type: ProductType; height: number | `${number}%`; radius?: number }) {
+  const [bg, fg] = typePalette[type] ?? typePalette.general;
+  return (
+    <View style={{ height, borderRadius: radius, backgroundColor: bg, overflow: 'hidden' }}>
+      {[0, 1, 2, 3, 4, 5].map((index) => (
+        <View key={index} style={{ position: 'absolute', left: -40 + index * 46, top: -20, width: 14, height: 400, backgroundColor: fg, opacity: 0.28, transform: [{ rotate: '-24deg' }] }} />
+      ))}
+    </View>
+  );
+}
+
+function facts(listing: Listing, limit: number) {
+  return getProductType(listing.productType).fields
+    .filter((field) => field.highlight && listing.attributes[field.key])
+    .slice(0, limit)
+    .map((field) => ({ label: field.label, value: listing.attributes[field.key] }));
+}
+
+function ListingTile({ listing, locale, theme }: { listing: Listing; locale: string; theme: Theme }) {
+  const s = styles(theme);
+  const price = formatPrice(listing.priceMinor, listing.currency, locale);
+  const open = () => Linking.openURL(`${webUrl}/listing/${listing.id}`);
+
+  if (listing.displayStyle === 'spotlight') {
+    return (
+      <Pressable accessibilityRole="link" onPress={open} style={[s.wide, s.spotlight]}>
+        <TypeArt type={listing.productType} height={190} />
+        <View style={{ padding: 14, gap: 8 }}>
+          <Text style={s.kicker}>{listing.categoryName}</Text>
+          <Text style={s.spotlightTitle}>{listing.title}</Text>
+          <View style={s.chips}>{facts(listing, 3).map((fact) => <Text key={fact.label} style={s.darkChip}>{/^[\d.,\s]+$/.test(fact.value) ? `${fact.label.replace(/\s*\(.*\)$/, '')} ${fact.value}` : fact.value}</Text>)}</View>
+          <Text style={[s.price, { color: '#eef6f2', fontSize: 24 }]}>{price}</Text>
+        </View>
+      </Pressable>
+    );
+  }
+  if (listing.displayStyle === 'spec') {
+    return (
+      <Pressable accessibilityRole="link" onPress={open} style={[s.wide, s.panel, { flexDirection: 'row', gap: 12 }]}>
+        <View style={{ width: '40%' }}><TypeArt type={listing.productType} height={170} radius={16} /></View>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={s.title} numberOfLines={2}>{listing.title}</Text>
+          {facts(listing, 3).map((fact) => (
+            <View key={fact.label} style={s.specRow}><Text style={s.muted}>{fact.label}</Text><Text style={s.specValue}>{fact.value}</Text></View>
+          ))}
+          <Text style={[s.price, { marginTop: 'auto' }]}>{price}</Text>
+        </View>
+      </Pressable>
+    );
+  }
+  if (listing.displayStyle === 'video') {
+    return (
+      <Pressable accessibilityRole="link" onPress={open} style={s.half}>
+        <TypeArt type={listing.productType} height={300} />
+        <View style={s.videoOverlay}>
+          <Text style={[s.title, { color: '#fff' }]} numberOfLines={2}>{listing.title}</Text>
+          <Text style={[s.price, { color: '#fff' }]}>{price}</Text>
+        </View>
+      </Pressable>
+    );
+  }
+  return (
+    <Pressable accessibilityRole="link" onPress={open} style={s.half}>
+      <TypeArt type={listing.productType} height={listing.displayStyle === 'gallery' ? 190 : 210} />
+      {listing.displayStyle === 'gallery' && (
+        <View style={{ flexDirection: 'row', gap: 5, marginTop: 5 }}>
+          <View style={{ flex: 1 }}><TypeArt type={listing.productType} height={44} radius={10} /></View>
+          <View style={{ flex: 1 }}><TypeArt type={listing.productType} height={44} radius={10} /></View>
+        </View>
+      )}
+      <Text style={[s.title, { marginTop: 8 }]} numberOfLines={2}>{listing.title}</Text>
+      <Text style={s.price}>{price}</Text>
+      <Text style={s.muted} numberOfLines={1}>{listing.sellerName}</Text>
+    </Pressable>
+  );
+}
+
 export default function MarketplaceHome() {
+  const theme = useColorScheme() === 'dark' ? dark : light;
+  const s = styles(theme);
   const [catalogue, setCatalogue] = useState<CatalogueResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
   const countryName = catalogue?.market.countryName || process.env.EXPO_PUBLIC_DEPLOYMENT_COUNTRY_NAME || 'Zambia';
   const locale = catalogue?.market.locale || process.env.EXPO_PUBLIC_DEFAULT_LOCALE || 'en-ZM';
+  const listings = catalogue?.listings ?? [];
+  const quick = listings.filter((listing) => listing.displayStyle === 'compact');
+  const rest = listings.filter((listing) => listing.displayStyle !== 'compact');
 
   useEffect(() => {
     fetch(`${apiUrl}/api/catalogue`)
@@ -23,67 +121,101 @@ export default function MarketplaceHome() {
       .finally(() => setLoading(false));
   }, []);
 
-  const renderListing = ({ item }: { item: Listing }) => (
-    <Pressable accessibilityRole="button" style={styles.card}>
-      <View style={styles.imagePlaceholder}><Text style={styles.imageMark}>✳</Text></View>
-      <Text style={styles.category}>{item.categoryName}</Text>
-      <Text style={styles.title}>{item.title}</Text>
-      <View style={styles.details}>
-        <Text style={styles.seller}>{item.sellerName}</Text>
-        <Text style={styles.price}>{formatPrice(item.priceMinor, item.currency, locale)}</Text>
-      </View>
-    </Pressable>
-  );
-
   return (
-    <FlatList
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      data={catalogue?.listings ?? []}
-      keyExtractor={(item) => item.id}
-      renderItem={renderListing}
-      ListHeaderComponent={(
-        <>
-          <Text style={styles.wordmark}>katondo<Text style={styles.period}>.</Text></Text>
-          <Text style={styles.eyebrow}>YOUR MARKETPLACE, REIMAGINED</Text>
-          <Text style={styles.heading}>Good things find new homes.</Text>
-          <Text style={styles.subheading}>Discover one-of-a-kind finds from people and businesses across {countryName}.</Text>
-          <Pressable accessibilityRole="link" style={styles.accountButton} onPress={() => Linking.openURL(`${webUrl}/account`)}><Text style={styles.accountButtonText}>Account settings · Password, security and preferences ↗</Text></Pressable>
-          <Pressable accessibilityRole="link" style={styles.staffButton} onPress={() => Linking.openURL(`${webUrl}/admin`)}><Text style={styles.staffButtonText}>Katondo team · Open staff workspace ↗</Text></Pressable>
-          <Text style={styles.sectionTitle}>Browse categories</Text>
-          {catalogue?.categories.map((category) => <Text key={category.id} style={styles.categoryPill}>{category.name}  ↗</Text>)}
-          <Text style={styles.sectionTitle}>Picked for you</Text>
-          {loading && <ActivityIndicator color="#214e3c" style={styles.loader} />}
-          {!loading && !catalogue && <Text style={styles.empty}>Couldn’t load listings. Check your connection and try again.</Text>}
-          {!loading && catalogue?.listings.length === 0 && <Text style={styles.empty}>New listings will appear here.</Text>}
-        </>
-      )}
-    />
+    <View style={{ flex: 1, backgroundColor: theme.paper }}>
+      <ScrollView contentContainerStyle={s.content}>
+        <View style={s.brandRow}>
+          <View style={s.brandMark} />
+          <Text style={s.brand}>katondo</Text>
+        </View>
+        <Text style={s.heading}>Buy and sell anything in {countryName}.</Text>
+        <View style={s.search}>
+          <TextInput value={query} onChangeText={setQuery} placeholder="What are you looking for?" placeholderTextColor={theme.muted} style={s.searchInput}
+            returnKeyType="search" onSubmitEditing={() => Linking.openURL(`${webUrl}/browse?q=${encodeURIComponent(query)}`)} />
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 16 }}>
+          {productTypes.map((type) => (
+            <Pressable key={type.id} accessibilityRole="link" style={s.typeChip} onPress={() => Linking.openURL(`${webUrl}/browse?type=${type.id}`)}>
+              <View style={{ width: 26, height: 26, borderRadius: 13, overflow: 'hidden' }}><TypeArt type={type.id} height={26} radius={13} /></View>
+              <Text style={s.typeChipText}>{type.label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        <View style={s.live}><View style={s.liveDot} /><Text style={s.liveText}>Live auctions are on the way.</Text></View>
+
+        <Text style={s.sectionTitle}>Newest listings</Text>
+        {loading && <ActivityIndicator color={theme.brand} style={{ marginVertical: 24 }} />}
+        {!loading && !catalogue && <Text style={s.muted}>Listings couldn’t load. Check your connection and try again.</Text>}
+        {!loading && catalogue && !listings.length && <Text style={s.muted}>No listings yet. Be the first to sell something.</Text>}
+
+        <View style={s.grid}>
+          {rest.map((listing) => <ListingTile key={listing.id} listing={listing} locale={locale} theme={theme} />)}
+        </View>
+
+        {quick.length > 0 && (
+          <View style={[s.panel, { marginTop: 18 }]}>
+            <Text style={[s.sectionTitle, { marginTop: 0, fontSize: 19 }]}>Everyday buys</Text>
+            {quick.map((listing) => (
+              <Pressable key={listing.id} accessibilityRole="link" onPress={() => Linking.openURL(`${webUrl}/listing/${listing.id}`)} style={s.quickRow}>
+                <View style={{ width: 48 }}><TypeArt type={listing.productType} height={48} radius={12} /></View>
+                <View style={{ flex: 1 }}><Text style={s.title} numberOfLines={1}>{listing.title}</Text><Text style={s.muted}>{listing.sellerName}</Text></View>
+                <Text style={s.price}>{formatPrice(listing.priceMinor, listing.currency, locale)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        <Pressable accessibilityRole="link" style={s.sellBand} onPress={() => Linking.openURL(`${webUrl}/sell/studio`)}>
+          <Text style={s.sellTitle}>Your item, shown your way.</Text>
+          <Text style={s.sellText}>Pick what you’re selling and how buyers see it.</Text>
+          <Text style={s.sellButton}>Open the listing studio</Text>
+        </Pressable>
+
+        <View style={s.footerLinks}>
+          <Text style={s.link} onPress={() => Linking.openURL(`${webUrl}/account`)}>Account settings</Text>
+          <Text style={s.link} onPress={() => Linking.openURL(`${webUrl}/admin`)}>Katondo team</Text>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#fbfaf7' },
-  content: { padding: 22, paddingTop: 58, paddingBottom: 40 },
-  wordmark: { color: '#214e3c', fontSize: 26, fontWeight: '800', letterSpacing: -1.5 },
-  period: { color: '#e29369' },
-  eyebrow: { color: '#77857c', fontSize: 10, fontWeight: '700', letterSpacing: 1.4, marginTop: 36 },
-  heading: { color: '#213c30', fontSize: 40, fontWeight: '600', letterSpacing: -1.8, lineHeight: 45, marginTop: 13, maxWidth: 340 },
-  subheading: { color: '#748078', fontSize: 15, lineHeight: 23, marginTop: 13, maxWidth: 340 },
-  accountButton: { alignSelf: 'flex-start', backgroundColor: '#214e3c', borderRadius: 7, marginTop: 19, paddingHorizontal: 13, paddingVertical: 11 },
-  accountButtonText: { color: '#ffffff', fontSize: 11, fontWeight: '700' },
-  staffButton: { alignSelf: 'flex-start', borderColor: '#cdd8cf', borderRadius: 7, borderWidth: 1, marginTop: 9, paddingHorizontal: 13, paddingVertical: 10 },
-  staffButtonText: { color: '#214e3c', fontSize: 11, fontWeight: '700' },
-  sectionTitle: { color: '#1b2924', fontSize: 21, fontWeight: '700', letterSpacing: -0.5, marginTop: 35, marginBottom: 15 },
-  categoryPill: { alignSelf: 'flex-start', overflow: 'hidden', backgroundColor: '#e7eee4', borderRadius: 18, color: '#34483d', fontSize: 13, fontWeight: '600', marginBottom: 9, paddingHorizontal: 15, paddingVertical: 10 },
-  card: { marginBottom: 21 },
-  imagePlaceholder: { alignItems: 'center', justifyContent: 'center', height: 220, backgroundColor: '#e4e9df', borderRadius: 8 },
-  imageMark: { color: '#759079', fontSize: 72, opacity: 0.7 },
-  category: { color: '#879188', fontSize: 11, marginTop: 12 },
-  title: { color: '#293b31', fontSize: 16, fontWeight: '600', marginTop: 5 },
-  details: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 9 },
-  seller: { color: '#858e86', fontSize: 12 },
-  price: { color: '#304b3b', fontSize: 13, fontWeight: '700' },
-  loader: { marginVertical: 22 },
-  empty: { color: '#859087', fontSize: 13, lineHeight: 20, marginTop: 6 },
+const styles = (t: Theme) => StyleSheet.create({
+  content: { padding: 18, paddingTop: 60, paddingBottom: 48 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  brandMark: { width: 20, height: 20, borderTopLeftRadius: 6, borderTopRightRadius: 6, borderBottomRightRadius: 6, borderBottomLeftRadius: 10, backgroundColor: t.brand },
+  brand: { color: t.ink, fontSize: 21, fontWeight: '800', letterSpacing: -0.9 },
+  heading: { color: t.ink, fontSize: 40, fontWeight: '800', letterSpacing: -1.6, lineHeight: 42, marginTop: 28 },
+  search: { marginTop: 20, borderRadius: 999, backgroundColor: t.surface, borderWidth: 1, borderColor: t.line, paddingHorizontal: 18 },
+  searchInput: { height: 52, fontSize: 16, color: t.ink },
+  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingLeft: 6, paddingRight: 14, borderRadius: 999, backgroundColor: t.surface, borderWidth: 1, borderColor: t.line },
+  typeChipText: { color: t.ink, fontSize: 14, fontWeight: '500' },
+  live: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 16, backgroundColor: t.livePale },
+  liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: t.live },
+  liveText: { color: t.ink, fontSize: 14, fontWeight: '600' },
+  sectionTitle: { color: t.ink, fontSize: 24, fontWeight: '700', letterSpacing: -0.6, marginTop: 28, marginBottom: 14 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 22 },
+  wide: { width: '100%' },
+  half: { width: '48%' },
+  panel: { padding: 12, borderRadius: 24, backgroundColor: t.surface, borderWidth: 1, borderColor: t.line },
+  spotlight: { padding: 8, borderRadius: 26, backgroundColor: '#062a1e' },
+  kicker: { color: '#8fd3b4', fontSize: 13, fontWeight: '600' },
+  spotlightTitle: { color: '#eef6f2', fontSize: 23, fontWeight: '700', letterSpacing: -0.5 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  darkChip: { color: '#eef6f2', fontSize: 13, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
+  title: { color: t.ink, fontSize: 15, fontWeight: '600', lineHeight: 19 },
+  price: { color: t.ink, fontSize: 16, fontWeight: '700', fontFamily: rounded, marginTop: 3 },
+  muted: { color: t.muted, fontSize: 13 },
+  specRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: t.line },
+  specValue: { color: t.ink, fontSize: 13, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  videoOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, backgroundColor: 'rgba(0,0,0,0.45)' },
+  quickRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: t.line },
+  sellBand: { marginTop: 32, padding: 24, borderRadius: 28, backgroundColor: '#062a1e' },
+  sellTitle: { color: '#eef6f2', fontSize: 30, fontWeight: '800', letterSpacing: -1.2, lineHeight: 32 },
+  sellText: { color: '#a9c5b7', fontSize: 15, marginTop: 10 },
+  sellButton: { alignSelf: 'flex-start', marginTop: 18, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 999, backgroundColor: '#ffffff', color: '#062a1e', fontWeight: '700', overflow: 'hidden' },
+  footerLinks: { flexDirection: 'row', gap: 20, marginTop: 28 },
+  link: { color: t.brand, fontSize: 14, fontWeight: '600' },
 });

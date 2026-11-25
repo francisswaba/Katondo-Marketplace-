@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './styles.css';
+import './pages.css';
 import './account.css';
 import './release.css';
 import ThemeBootstrap from './ThemeBootstrap';

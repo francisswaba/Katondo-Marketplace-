@@ -12,13 +12,19 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - UI: modern, premium; Apple system typography (San Francisco where available) via the OS font stack. No downloaded "generic AI" fonts.
 - Release in phases; build the full marketplace but test feature by feature.
 
+## Listings, product types and display styles
+- Product types, display styles and shop layouts are defined once in `packages/contracts` (`productTypes`, `displayStyles`, `storefrontLayouts`). Add a type or style there, then extend the SQL check constraints in a new migration.
+- Each listing stores `product_type`, `display_style` and `attributes` (JSON, validated against the type's fields in `apps/api/src/listings.ts`).
+- Web cards render per style in `apps/web/components/ListingCard.tsx`; artwork per type in `PatternArt.tsx`. Seller flow: `/sell/studio`.
+- Design system (in `apps/web/app/styles.css`): malachite green brand, orange only for live/bidding, Apple system type (rounded for prices), chitenge-inspired patterns until real photos exist. Avoid generic AI-UI looks.
+
 ## Stack and layout
 - npm workspaces monorepo, Node 24.
 - `apps/web` Next.js storefront + `/admin` staff workspace + `/account` settings + `/sell` onboarding.
 - `apps/api` Express API (OIDC/JWT auth boundary, roles, activity tracking, release controls).
 - `apps/mobile` Expo (iOS/Android), id `com.katondo.marketplace`.
 - `packages/contracts` shared TypeScript types. Must build before web/api.
-- `infra/postgres/migrations` 001–007 (latest: 007 country configuration). `infra/keycloak` scaffold (not deployed).
+- `infra/postgres/migrations` 001–008 (latest: 008 product types and display styles). `infra/keycloak` scaffold (not deployed).
 
 ## Commands
 - `npm run typecheck`, `npm run build`

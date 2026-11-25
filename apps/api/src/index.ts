@@ -14,6 +14,8 @@ import {
 } from './access.js';
 import { createAdministrationRouter } from './admin.js';
 import { createAccountRouter } from './account.js';
+import { createListingsRouter, listingColumns, mapListingRow } from './listings.js';
+import { productTypeIds } from '@katondo/contracts';
 import { recordActivity, scheduleActivityRetention } from './activity.js';
 import { ensurePlatformUser, findPlatformUserId } from './identity.js';
 import { readReleaseReadiness } from './release.js';
@@ -193,18 +195,20 @@ app.get('/api/market', (_request, response) => {
 });
 
 app.get('/api/catalogue', async (request: AuthenticatedRequest, response) => {
+  const requestedType = typeof request.query.type === 'string' ? request.query.type : '';
+  const productType = (productTypeIds as string[]).includes(requestedType) ? requestedType : null;
   try {
     const [categoriesResult, listingsResult] = await Promise.all([
       pool.query('SELECT id, name, slug FROM categories ORDER BY name'),
       pool.query(`
-        SELECT l.id, l.title, l.description, l.price_minor, l.currency,
-               l.condition, l.category_id, c.name AS category_name,
-               l.seller_name, l.quantity
+        SELECT ${listingColumns}
         FROM listings l
         JOIN categories c ON c.id = l.category_id
-        WHERE l.country_code = $1
+        WHERE l.country_code = $1 AND l.status = 'published'
+          AND ($2::text IS NULL OR l.product_type = $2)
         ORDER BY l.created_at DESC
-      `, [market.countryCode]),
+        LIMIT 120
+      `, [market.countryCode, productType]),
     ]);
 
     const result: CatalogueResponse = {
@@ -214,18 +218,7 @@ app.get('/api/catalogue', async (request: AuthenticatedRequest, response) => {
         name: row.name,
         slug: row.slug,
       })),
-      listings: listingsResult.rows.map((row) => ({
-        id: row.id,
-        title: row.title,
-        description: row.description,
-        priceMinor: Number(row.price_minor),
-        currency: row.currency.trim(),
-        condition: row.condition,
-        categoryId: row.category_id,
-        categoryName: row.category_name,
-        sellerName: row.seller_name,
-        quantity: row.quantity,
-      })),
+      listings: listingsResult.rows.map(mapListingRow),
     };
 
     await recordActivity(pool, request, 'buyer', 'buyer.catalogue_loaded', {
@@ -491,6 +484,7 @@ app.get('/api/admin/operations/overview', authenticate, requireAnyRole(['super_a
 
 app.use(createAdministrationRouter(pool, authenticate));
 app.use(createAccountRouter(pool, authenticate));
+app.use(createListingsRouter(pool, authenticate));
 
 scheduleActivityRetention(pool);
 
