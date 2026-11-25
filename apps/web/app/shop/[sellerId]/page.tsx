@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation';
 import ListingCard from '../../../components/ListingCard';
 import ListingFeed from '../../../components/ListingFeed';
+import ShopReviews from '../../../components/ShopReviews';
+import Stars, { ratingLabel } from '../../../components/Stars';
 import { BottomNav, SiteFooter, SiteHeader } from '../../../components/SiteChrome';
-import { getStorefront } from '../../../lib/catalogue';
+import { getShopReviews, getStorefront } from '../../../lib/catalogue';
 import { formatMoney } from '../../../lib/market';
 
 // Serve a cached copy and refresh it in the background at most once a minute.
@@ -17,8 +19,9 @@ type Props = { params: Promise<{ sellerId: string }> };
 
 export default async function ShopPage({ params }: Props) {
   const { sellerId } = await params;
-  const data = await getStorefront(sellerId);
+  const [data, reviews] = await Promise.all([getStorefront(sellerId), getShopReviews(sellerId)]);
   if (!data) notFound();
+  const rating = reviews?.enabled && reviews.summary.count > 0 && reviews.summary.average !== null ? reviews.summary : null;
   const { storefront, listings, market } = data;
   const [feature, ...others] = listings;
 
@@ -31,6 +34,11 @@ export default async function ShopPage({ params }: Props) {
           <div>
             <h1>{storefront.displayName}</h1>
             <p>{storefront.tagline || (storefront.sellerType === 'business' ? 'Registered business' : 'Independent seller')}</p>
+            {rating && (
+              <a className="shop-rating" href="#reviews-heading" aria-label={ratingLabel(rating.average!, rating.count)}>
+                <Stars rating={rating.average!} /> <strong>{rating.average!.toFixed(1)}</strong> <span>({rating.count})</span>
+              </a>
+            )}
           </div>
           {storefront.verificationStatus === 'verified' && <span className="verified-badge">Verified seller</span>}
         </header>
@@ -63,6 +71,8 @@ export default async function ShopPage({ params }: Props) {
         {listings.length > 0 && (
           <p className="shop-summary">{listings.length} listings from {formatMoney(Math.min(...listings.map((item) => item.priceMinor)), market.currency, market.locale)}</p>
         )}
+
+        <ShopReviews data={reviews} shopName={storefront.displayName} locale={market.locale} />
       </main>
       <SiteFooter countryName={market.countryName} />
       <BottomNav active="browse" />

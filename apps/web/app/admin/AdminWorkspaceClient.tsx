@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import type { User } from 'oidc-client-ts';
 import { getUserManager, isCurrentUser, isOidcConfigured } from '../../lib/oidc';
 import ReleaseControlsPanel from './ReleaseControlsPanel';
+import ReviewModerationPanel from './ReviewModerationPanel';
 
 type Capabilities = {
   accessWorkspace: boolean;
@@ -20,6 +21,8 @@ type Capabilities = {
   manageAgents: boolean;
   viewReleaseControls: boolean;
   manageReleaseControls: boolean;
+  viewReviews?: boolean;
+  moderateReviews?: boolean;
 };
 
 type StaffSession = {
@@ -319,6 +322,8 @@ export default function AdminWorkspaceClient() {
       {session.capabilities.viewReleaseControls && <ReleaseControlsPanel token={user.access_token} canManage={session.capabilities.manageReleaseControls} />}
 
       {session.capabilities.viewSellerApplications && <section className="admin-section"><div className="admin-section-title"><div><p className="eyebrow">Trust and safety</p><h2>Seller applications</h2></div><span>{applications.length} awaiting action</span></div><div className="application-table">{applications.map((application) => <article className="review-card" key={application.id}><div className="review-card-head"><div><span>{friendlyRole(application.seller_type)}</span><h3>{application.display_name}</h3><p>{application.legal_name} · {application.city}</p></div><strong>{friendlyRole(application.verification_status)}</strong></div><dl><div><dt>Contact</dt><dd>{application.email || application.phone || 'Verified in identity account'}</dd></div>{application.business_registration_number && <div><dt>Registration</dt><dd>{application.business_registration_number}</dd></div>}<div><dt>Submitted</dt><dd>{new Date(application.accepted_at).toLocaleString('en-ZM')}</dd></div></dl>{application.agent_recommendation && <div className="agent-note"><strong>AI triage: {friendlyRole(application.agent_recommendation)}</strong><p>{application.agent_summary}</p><span>Advisory only — a person must decide.</span></div>}{session.capabilities.reviewSellerApplications && <div className="review-actions"><label>Review reason<textarea value={reviewReasons[application.id] || ''} maxLength={500} onChange={(event) => setReviewReasons((current) => ({ ...current, [application.id]: event.target.value }))} /></label><div><button type="button" disabled={saving === `review-${application.id}`} onClick={() => reviewApplication(application.id, 'in_review')}>Move to review</button><button className="danger-button" type="button" disabled={saving === `review-${application.id}`} onClick={() => reviewApplication(application.id, 'rejected')}>Reject</button></div></div>}</article>)}{applications.length === 0 && <div className="admin-empty">No seller applications are waiting for action.</div>}</div></section>}
+
+      {session.capabilities.viewReviews && <ReviewModerationPanel token={user.access_token} canModerate={Boolean(session.capabilities.moderateReviews)} />}
 
       {session.capabilities.viewStaff && <section className="admin-section"><div className="admin-section-title"><div><p className="eyebrow">Access control</p><h2>Staff directory</h2></div><span>Roles come from the identity provider</span></div><div className="agent-list">{staffMembers.map((staffMember) => <article key={staffMember.user_id}><div><strong>{staffMember.display_name}</strong><span className={`status-pill ${staffMember.status === 'active' ? 'active' : 'disabled'}`}>{staffMember.status}</span><p>{staffMember.email || staffMember.phone || 'Verified work identity'}</p><small>{staffMember.roles.map(friendlyRole).join(' · ')}{staffMember.last_sign_in_at ? ` · Last sign-in ${new Date(staffMember.last_sign_in_at).toLocaleString('en-ZM')}` : ''}</small></div>{session.capabilities.manageStaff && staffMember.status !== 'departed' && <button type="button" disabled={saving === `staff-${staffMember.user_id}`} onClick={() => changeStaffStatus(staffMember)}>{staffMember.status === 'active' ? 'Suspend' : 'Reactivate'}</button>}</article>)}{staffMembers.length === 0 && <div className="admin-empty">Staff members appear after their first successful staff sign-in.</div>}</div></section>}
 

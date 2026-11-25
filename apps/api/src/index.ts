@@ -19,6 +19,7 @@ import { productTypeIds } from '@katondo/contracts';
 import { recordActivity, scheduleActivityRetention } from './activity.js';
 import { ensurePlatformUser, findPlatformUserId } from './identity.js';
 import { readReleaseReadiness } from './release.js';
+import { createReviewsRouter } from './reviews.js';
 import { getMarketConfiguration } from './market.js';
 
 const app = express();
@@ -485,6 +486,7 @@ app.get('/api/admin/operations/overview', authenticate, requireAnyRole(['super_a
 app.use(createAdministrationRouter(pool, authenticate));
 app.use(createAccountRouter(pool, authenticate));
 app.use(createListingsRouter(pool, authenticate));
+app.use(createReviewsRouter(pool, authenticate));
 
 scheduleActivityRetention(pool);
 

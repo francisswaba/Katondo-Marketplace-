@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
 import { getDisplayStyle, getProductType } from '@katondo/contracts';
 import PatternArt from '../../../components/PatternArt';
+import Stars, { ratingLabel } from '../../../components/Stars';
 import { BottomNav, SiteFooter, SiteHeader } from '../../../components/SiteChrome';
-import { getListing } from '../../../lib/catalogue';
+import { getListing, getShopReviews } from '../../../lib/catalogue';
 import { formatMoney } from '../../../lib/market';
 
 // Serve a cached copy and refresh it in the background at most once a minute.
@@ -26,6 +27,8 @@ export default async function ListingPage({ params }: Props) {
   const data = await getListing(listingId);
   if (!data) notFound();
   const { listing, market } = data;
+  const reviews = listing.sellerId ? await getShopReviews(listing.sellerId) : null;
+  const rating = reviews?.enabled && reviews.summary.count > 0 && reviews.summary.average !== null ? reviews.summary : null;
   const type = getProductType(listing.productType);
   const style = getDisplayStyle(listing.displayStyle).id;
   const images = listing.media.filter((item) => item.type === 'image');
@@ -79,7 +82,15 @@ export default async function ListingPage({ params }: Props) {
 
           <a className="seller-row" href={listing.sellerId ? `/shop/${listing.sellerId}` : undefined}>
             <span className="seller-avatar" aria-hidden="true">{listing.sellerName.slice(0, 1)}</span>
-            <span><strong>{listing.sellerName}</strong><small>{listing.sellerId ? 'Visit shop' : 'Seller'}</small></span>
+            <span>
+              <strong>{listing.sellerName}</strong>
+              {rating && (
+                <span className="seller-rating" aria-label={ratingLabel(rating.average!, rating.count)}>
+                  <Stars rating={rating.average!} size={14} /> {rating.average!.toFixed(1)} <span>({rating.count})</span>
+                </span>
+              )}
+              <small>{listing.sellerId ? 'Visit shop' : 'Seller'}</small>
+            </span>
           </a>
         </div>
       </main>

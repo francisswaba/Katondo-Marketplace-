@@ -37,6 +37,7 @@ This repository now has a deployment path for the web storefront on Netlify and 
 | `AUTH_DATA_PROCESSING_APPROVED` | `true` only after the approved provider arrangement is recorded |
 | `AUTH_REQUIRE_MFA_FOR_STAFF` | `true`; staff tokens must include an MFA authentication-method claim |
 | `SELLER_ONBOARDING_ENABLED` | `true` only for the approved onboarding release |
+| `REVIEWS_ENABLED` | `false` until checkout creates real orders; then `true` |
 | `SELLER_DATA_PROCESSING_APPROVED` | `true` only after the data-processing release gate passes |
 | `SELLER_TERMS_VERSION` / `SELLER_TERMS_URL` | Exact published seller terms version and HTTPS URL |
 | `PRIVACY_NOTICE_VERSION` / `PRIVACY_NOTICE_URL` | Exact published privacy notice version and HTTPS URL |
@@ -79,3 +80,10 @@ The application is country-configurable; see `docs/architecture/COUNTRY_CONFIGUR
 ## Hosting split
 
 Use Netlify for the Next.js web storefront and Railway for the long-running Express API and PostgreSQL. Deploy iOS/Android separately through Expo's native build and app-store release workflow; hosting these web services does not publish mobile apps.
+
+## Reviews
+
+Buyers and sellers can review each other once per completed order, within 14 days of completion (migration `009_orders_reviews.sql`, `apps/api/src/reviews.ts`). Each review stays hidden until the other side has reviewed or the window has closed. A seller can reply publicly once to a buyer's review. Staff with the administrator, super administrator or customer support role can hide and restore reviews from the staff workspace; every change is written to `audit_events` with a reason.
+
+Reviews are switched off with `REVIEWS_ENABLED=false` until checkout creates orders. While off, the public shop endpoint reports `enabled: false` and the web app shows no ratings. Buyer ratings (sellers' reviews of buyers) are shown only to sellers with an order from that buyer, never publicly. Confirm this with privacy counsel before switching on.
+

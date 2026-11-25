@@ -1,4 +1,4 @@
-import type { CatalogueResponse, ListingResponse, StorefrontResponse } from '@katondo/contracts';
+import type { CatalogueResponse, ListingResponse, ShopReviewsResponse, StorefrontResponse } from '@katondo/contracts';
 
 export const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
 
@@ -30,4 +30,8 @@ export function getListing(listingId: string) {
 
 export function getStorefront(sellerId: string) {
   return getJson<StorefrontResponse>(`/api/shops/${encodeURIComponent(sellerId)}`);
+}
+
+export function getShopReviews(sellerId: string) {
+  return getJson<ShopReviewsResponse>(`/api/shops/${encodeURIComponent(sellerId)}/reviews`);
 }

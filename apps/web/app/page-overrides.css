@@ -10,3 +10,4 @@ h1 em,.seller-intro h1 em{font-style:normal;color:inherit;letter-spacing:inherit
 .account-gate>.theme-toggle,.admin-gate>.theme-toggle,.auth-callback>.theme-toggle{position:absolute;top:24px;right:32px}
 .danger-button{color:var(--danger)!important}
 .text-button{color:var(--muted)}
+.review-actions button[aria-pressed=true]{background:var(--malachite);border-color:var(--malachite);color:#fff}

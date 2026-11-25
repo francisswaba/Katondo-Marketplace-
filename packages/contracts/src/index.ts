@@ -277,3 +277,52 @@ export type CatalogueResponse = {
   categories: Category[];
   listings: Listing[];
 };
+
+/* ---------- Reviews ---------- */
+
+/** Days after an order completes during which either side can leave a review. */
+export const reviewWindowDays = 14;
+export const reviewCommentMaxLength = 1000;
+
+export type ReviewAuthorRole = 'buyer' | 'seller';
+
+export type RatingSummary = {
+  average: number | null;
+  count: number;
+  /** Count of visible reviews per star, index 0 = 1 star. */
+  distribution: [number, number, number, number, number];
+};
+
+export type PublicReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  listingTitle: string;
+  createdAt: string;
+  reply: string | null;
+  repliedAt: string | null;
+};
+
+export type ShopReviewsResponse = {
+  enabled: boolean;
+  summary: RatingSummary;
+  reviews: PublicReview[];
+};
+
+export type OrderReviewState = {
+  enabled: boolean;
+  orderId: string;
+  role: ReviewAuthorRole;
+  listingTitle: string;
+  counterpartName: string;
+  /** Whether this person can still submit their review. */
+  canReview: boolean;
+  /** Why they can't, when canReview is false. */
+  reason: string | null;
+  windowClosesAt: string | null;
+  mine: (PublicReview & { visible: boolean }) | null;
+  /** The other side's review, only once both have reviewed or the window has closed. */
+  theirs: PublicReview | null;
+  /** For sellers: the buyer's rating from sellers' reviews. */
+  buyerRating: RatingSummary | null;
+};

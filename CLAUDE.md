@@ -17,6 +17,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - Each listing stores `product_type`, `display_style` and `attributes` (JSON, validated against the type's fields in `apps/api/src/listings.ts`).
 - Web cards render per style in `apps/web/components/ListingCard.tsx`; artwork per type in `PatternArt.tsx`. Seller flow: `/sell/studio`.
 - Logo: the "Live" mark, a rounded K with an orange live dot (`apps/web/components/BrandMark.tsx`; tab icon `apps/web/app/icon.svg`; app icons in `apps/mobile/assets/`). The K follows the theme colour; the dot is always live orange. App icons have no ring. A ring pulses from the dot only in live moments (`BrandMark live`, page loading, live badges, header while an auction runs via `SiteHeader live`). Reduced-motion settings freeze it.
+- Reviews: two-way (buyer rates seller, seller rates buyer), one per side per completed order, 14-day window, hidden until both have reviewed or the window closes, one public seller reply, staff hide/restore with audited reason. API `apps/api/src/reviews.ts`; web `components/ShopReviews.tsx`, `/orders/[orderId]/review`, staff `admin/ReviewModerationPanel.tsx`. Gated by `REVIEWS_ENABLED` (keep **off** until checkout creates orders). Buyer ratings are never public. The `orders` table is minimal and will grow with checkout.
 - Design system (in `apps/web/app/styles.css`): malachite green brand, orange only for live/bidding, Apple system type (rounded for prices), chitenge-inspired patterns until real photos exist. Avoid generic AI-UI looks.
 
 ## Stack and layout
@@ -25,7 +26,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - `apps/api` Express API (OIDC/JWT auth boundary, roles, activity tracking, release controls).
 - `apps/mobile` Expo (iOS/Android), id `com.katondo.marketplace`.
 - `packages/contracts` shared TypeScript types. Must build before web/api.
-- `infra/postgres/migrations` 001–008 (latest: 008 product types and display styles). `infra/keycloak` scaffold (not deployed).
+- `infra/postgres/migrations` 001–009 (latest: 009 orders and reviews). `infra/keycloak` scaffold (not deployed).
 
 ## Commands
 - `npm run typecheck`, `npm run build`
@@ -39,7 +40,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - See `DEPLOYMENT.md` for env vars.
 
 ## Safety rules for working on this project
-- Feature gates stay **off** until real approvals exist: `AUTH_ENABLED`, `AUTH_DATA_PROCESSING_APPROVED`, seller-application flags. Never flip them to make something "work".
+- Feature gates stay **off** until real approvals exist: `AUTH_ENABLED`, `AUTH_DATA_PROCESSING_APPROVED`, seller-application flags, `REVIEWS_ENABLED`. Never flip them to make something "work".
 - Legal docs in `docs/legal` are **drafts**; never describe them as approved.
 - Don't call payments "escrow" until Zambian counsel / Bank of Zambia confirm.
 - Activity collection is opt-in, retention-limited, and never stores raw IPs.
