@@ -55,7 +55,11 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - Option A (compliance-safe): Keycloak + PostgreSQL on SwiftCloud Zambia (app-3 + db-1, ~K766.50/month). Org "Katondo Marketplace" created; not yet funded.
 - Option B (cheapest/easiest): Microsoft Entra External ID (free < 50k MAU; ~US$35/month extra for a branded login domain). Stores data in EMEA, so needs cross-border approval before real users.
 - Owner's last direction: build global-first, keep Zambia features; was setting up Entra. Blocked on creating an Azure subscription (owner must do payment/verification).
-- Code still needed for Entra: validate `scp=access_as_user` (`AUTH_REQUIRED_SCOPE`), Entra-specific password-reset/account wording, default `buyer` role assignment, service-agent client-credential test.
+- Entra tenant `c43c8626-…` set up by the owner (2026-11-27): app registrations katondo-api/web/app, 12 app roles, `signup_signin` flow, Google (and Facebook in dev mode). Values and variables are in `DEPLOYMENT.md` → "Sign-in with Microsoft Entra External ID".
+- Code done for Entra: scope check, default buyer role, seller role from database, email verified by provider, staff MFA via Conditional Access, Entra password wording, `NEXT_PUBLIC_AUTH_ENABLED` web switch, safe return paths. Still to do: in-app sign-in for the phone app (katondo-app registration exists), service-agent client-credential test, owner to add `email` optional claim on katondo-api.
+
+## Reminders for the owner
+- Account restoration (recovering a lost account when someone loses access to their email or password, plus deleted-account recovery): owner asked to be reminded once sign-in/sign-up setup in Entra is done (asked 2026-11-27).
 
 ## Still to build (after sign-in)
 Payments + payouts (shortlist: Lenco/BroadPay + a second licensed provider; mobile money and cards), seller identity/business verification, delivery (Lusaka pilot with courier panel), media storage, auctions + live bidding, livestream (prototype Amazon IVS behind an adapter), email/SMS notifications, returns/disputes/refunds, monitoring, backup/restore tests, security review, app-store releases.

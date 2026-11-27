@@ -4,7 +4,7 @@ import Link from 'next/link';
 import BrandMark from '../../../components/BrandMark';
 import ThemeToggle from '../../../components/ThemeToggle';
 import { useEffect, useState } from 'react';
-import { getUserManager } from '../../../lib/oidc';
+import { getUserManager, safeReturnPath } from '../../../lib/oidc';
 
 export default function AuthCallbackPage() {
   const [error, setError] = useState('');
@@ -21,10 +21,16 @@ export default function AuthCallbackPage() {
         const requestedPath = user.state && typeof user.state === 'object' && 'returnTo' in user.state
           ? (user.state as { returnTo?: unknown }).returnTo
           : null;
-        const returnTo = requestedPath === '/admin' || requestedPath === '/sell' || requestedPath === '/account' ? requestedPath : '/';
-        window.location.replace(returnTo);
+        window.location.replace(safeReturnPath(requestedPath));
       })
-      .catch(() => setError('We could not complete sign-in. Please return and try again.'));
+      .catch(() => {
+        // The provider reports cancellations and failures in the address, e.g. ?error=access_denied.
+        const params = new URLSearchParams(window.location.search);
+        const providerError = params.get('error');
+        setError(providerError === 'access_denied'
+          ? 'Sign-in was cancelled. You can try again whenever you’re ready.'
+          : 'We could not complete sign-in. Please return and try again.');
+      });
   }, []);
 
   return (

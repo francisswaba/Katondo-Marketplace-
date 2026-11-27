@@ -44,7 +44,16 @@ app.use(cors({
 app.use(express.json({ limit: '256kb' }));
 
 const issuer = process.env.AUTH_ISSUER;
-const audience = process.env.AUTH_AUDIENCE;
+// One or more accepted audiences, comma-separated (Entra v2 tokens use the API's client ID).
+const audience = process.env.AUTH_AUDIENCE?.split(',').map((value) => value.trim()).filter(Boolean);
+// Delegated tokens must carry this permission (Entra: the API's exposed scope, e.g. access_as_user).
+const requiredScope = process.env.AUTH_REQUIRED_SCOPE?.trim() || null;
+// Customers get this role when the provider assigns none (Entra customers have no role assignment).
+const defaultCustomerRole = (process.env.AUTH_DEFAULT_ROLE?.trim() || 'buyer') as UserRole;
+// Entra checks email ownership at sign-up but doesn't send an email_verified claim.
+const emailVerifiedByProvider = process.env.AUTH_EMAIL_VERIFIED_BY_PROVIDER === 'true';
+// Staff MFA is enforced by the provider's Conditional Access policy when tokens carry no amr claim.
+const staffMfaEnforcedByProvider = process.env.AUTH_STAFF_MFA_ENFORCED_BY_PROVIDER === 'true';
 const jwksUrl = process.env.AUTH_JWKS_URL;
 function validAuthenticationUrl(value: string | undefined) {
   if (!value) return false;
@@ -66,7 +75,7 @@ const privacyNoticeVersion = process.env.PRIVACY_NOTICE_VERSION;
 const privacyNoticeUrl = process.env.PRIVACY_NOTICE_URL;
 
 async function authenticate(request: AuthenticatedRequest, response: Response, next: NextFunction) {
-  if (!authenticationEnabled || !issuer || !audience || !remoteJwks) {
+  if (!authenticationEnabled || !issuer || !audience?.length || !remoteJwks) {
     response.status(503).json({ error: 'Authentication provider is not configured.' });
     return;
   }
@@ -99,6 +108,7 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
         ? realmAccess.roles
         : [];
     const roles = roleClaims.filter((role): role is UserRole => typeof role === 'string' && allowedRoles.includes(role as UserRole));
+    const scopes = typeof payload.scp === 'string' ? payload.scp.split(' ') : typeof payload.scope === 'string' ? payload.scope.split(' ') : [];
     const clientId = typeof payload.client_id === 'string'
       ? payload.client_id
       : typeof payload.azp === 'string'
@@ -133,6 +143,25 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
       return;
     }
 
+    if (requiredScope && !scopes.includes(requiredScope)) {
+      response.status(403).json({ error: 'This sign-in is not allowed to use Katondo. Sign in again from the Katondo website or app.' });
+      return;
+    }
+
+    // Sellers are approved in Katondo, not in the sign-in provider: add the seller role from the database.
+    const isStaff = roles.some((role) => staffRoles.includes(role));
+    if (!isStaff) {
+      const seller = await pool.query(`
+        SELECT s.seller_type FROM sellers s JOIN users u ON u.id = s.user_id
+        WHERE u.identity_subject = $1 AND s.verification_status = 'verified'
+        LIMIT 1
+      `, [payload.sub]);
+      const sellerType = seller.rows[0]?.seller_type as string | undefined;
+      if (sellerType === 'individual' && !roles.includes('individual_seller')) roles.push('individual_seller');
+      if (sellerType === 'business' && !roles.includes('business_seller')) roles.push('business_seller');
+      if (!roles.includes(defaultCustomerRole) && allowedRoles.includes(defaultCustomerRole)) roles.push(defaultCustomerRole);
+    }
+
     const actorType = roles.some((role) => staffRoles.includes(role))
       ? 'staff'
       : roles.some((role) => role === 'individual_seller' || role === 'business_seller')
@@ -141,8 +170,9 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
     const authenticationMethods = Array.isArray(payload.amr)
       ? payload.amr.filter((method): method is string => typeof method === 'string')
       : [];
-    if (actorType === 'staff' && process.env.AUTH_REQUIRE_MFA_FOR_STAFF === 'true'
-      && !authenticationMethods.some((method) => ['mfa', 'otp', 'hwk'].includes(method))) {
+    const mfaShown = authenticationMethods.some((method) => ['mfa', 'otp', 'hwk'].includes(method));
+    const mfaLeftToProvider = staffMfaEnforcedByProvider && authenticationMethods.length === 0;
+    if (actorType === 'staff' && process.env.AUTH_REQUIRE_MFA_FOR_STAFF === 'true' && !mfaShown && !mfaLeftToProvider) {
       response.status(403).json({ error: 'Staff accounts must complete multi-factor authentication.' });
       return;
     }
@@ -162,6 +192,11 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
         return;
       }
     }
+    const email = typeof payload.email === 'string'
+      ? payload.email
+      : Array.isArray(payload.emails) && typeof payload.emails[0] === 'string'
+        ? payload.emails[0]
+        : undefined;
     request.user = {
       id: payload.sub,
       roles,
@@ -172,9 +207,9 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
         : typeof payload.preferred_username === 'string'
           ? payload.preferred_username
           : undefined,
-      email: typeof payload.email === 'string' ? payload.email : undefined,
+      email,
       phone: typeof payload.phone_number === 'string' ? payload.phone_number : undefined,
-      emailVerified: payload.email_verified === true,
+      emailVerified: payload.email_verified === true || (emailVerifiedByProvider && Boolean(email)),
       phoneVerified: payload.phone_number_verified === true,
     };
     next();

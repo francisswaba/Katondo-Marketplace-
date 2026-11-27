@@ -4,11 +4,24 @@ import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts';
 
 let userManager: UserManager | null = null;
 
+/**
+ * Sign-in is offered only when the provider is configured AND switched on. The provider's
+ * details can be set ahead of approval; NEXT_PUBLIC_AUTH_ENABLED stays false until then.
+ */
 export function isOidcConfigured() {
   return Boolean(
-    process.env.NEXT_PUBLIC_AUTH_AUTHORITY
+    process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true'
+      && process.env.NEXT_PUBLIC_AUTH_AUTHORITY
       && process.env.NEXT_PUBLIC_AUTH_CLIENT_ID,
   );
+}
+
+/** Which sign-in provider is in use; changes wording such as where to reset a password. */
+export const authProvider = process.env.NEXT_PUBLIC_AUTH_PROVIDER === 'entra' ? 'entra' : 'generic';
+
+/** Only same-site paths are allowed as a place to return to after sign-in. */
+export function safeReturnPath(value: unknown) {
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\') ? value : '/';
 }
 
 export function getUserManager() {

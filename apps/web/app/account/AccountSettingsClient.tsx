@@ -6,7 +6,7 @@ import ThemeToggle, { setTheme } from '../../components/ThemeToggle';
 import { FormEvent, useEffect, useState } from 'react';
 import type { User } from 'oidc-client-ts';
 import type { MarketConfiguration } from '@katondo/contracts';
-import { getUserManager, isCurrentUser, isOidcConfigured } from '../../lib/oidc';
+import { authProvider, getUserManager, isCurrentUser, isOidcConfigured } from '../../lib/oidc';
 
 type Preferences = {
   locale: string;
@@ -128,7 +128,9 @@ export default function AccountSettingsClient() {
       <section className="account-heading"><p className="eyebrow">Account settings</p><h1>Make Katondo work for you.</h1><p>Security details stay with the approved sign-in provider. Marketplace preferences are stored by Katondo.</p></section>
       {message && <p className="admin-flash">{message}</p>}
       <section className="account-grid">
-        <article className="account-card"><p className="eyebrow">Sign-in and security</p><h2>Password and account security</h2><p>Update your password, recovery methods, multi-factor authentication and verified contact details securely with the sign-in provider.</p>{accountUrl ? <a className="primary-button" href={accountUrl} target="_blank" rel="noreferrer">Manage password and security</a> : <p className="account-warning">The administrator must configure the identity provider’s account-management URL before password changes are available.</p>}</article>
+        <article className="account-card"><p className="eyebrow">Sign-in and security</p><h2>Password and account security</h2>{authProvider === 'entra'
+          ? <><p>Katondo never sees your password. To change it, sign out, choose <strong>Sign in</strong>, then <strong>Forgot password?</strong> on the sign-in page. If you signed up with Google or Facebook, manage your password with them.</p><button className="primary-button" type="button" onClick={signOut}>Sign out to change password</button></>
+          : <><p>Update your password, recovery methods, multi-factor authentication and verified contact details securely with the sign-in provider.</p>{accountUrl ? <a className="primary-button" href={accountUrl} target="_blank" rel="noreferrer">Manage password and security</a> : <p className="account-warning">The administrator must configure the identity provider’s account-management URL before password changes are available.</p>}</>}</article>
         <article className="account-card"><p className="eyebrow">Identity</p><h2>Your verified account</h2><dl><div><dt>Name</dt><dd>{data.account.displayName || 'Managed by sign-in provider'}</dd></div><div><dt>Email</dt><dd>{data.account.email || 'Not provided'}</dd></div><div><dt>Phone</dt><dd>{data.account.phone || 'Not provided'}</dd></div></dl>{accountUrl && <a className="text-link" href={accountUrl} target="_blank" rel="noreferrer">Update contact details</a>}</article>
       </section>
       <form className="account-preferences" onSubmit={save}>

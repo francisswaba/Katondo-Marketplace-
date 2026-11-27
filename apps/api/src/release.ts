@@ -42,7 +42,8 @@ export async function readReleaseReadiness(database: DatabaseClient) {
     authenticationEnabled: process.env.AUTH_ENABLED === 'true' && process.env.AUTH_DATA_PROCESSING_APPROVED === 'true',
     identityConfiguration: Boolean(process.env.AUTH_ISSUER && process.env.AUTH_AUDIENCE && process.env.AUTH_JWKS_URL),
     secureIdentityUrls: isHttpsUrl(process.env.AUTH_ISSUER) && isHttpsUrl(process.env.AUTH_JWKS_URL),
-    accountRecoveryConfigured: isHttpsUrl(process.env.AUTH_ACCOUNT_URL),
+    // Entra's sign-in page has its own "Forgot password?" link, so no separate account portal is needed.
+    accountRecoveryConfigured: isHttpsUrl(process.env.AUTH_ACCOUNT_URL) || process.env.AUTH_PROVIDER === 'entra',
     staffMfaRequired: process.env.AUTH_REQUIRE_MFA_FOR_STAFF === 'true',
     privacyNoticePublished: Boolean(process.env.PRIVACY_NOTICE_VERSION) && isHttpsUrl(process.env.PRIVACY_NOTICE_URL),
     sellerTermsPublished: Boolean(process.env.SELLER_TERMS_VERSION) && isHttpsUrl(process.env.SELLER_TERMS_URL),

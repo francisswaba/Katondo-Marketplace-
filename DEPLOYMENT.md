@@ -36,6 +36,11 @@ This repository now has a deployment path for the web storefront on Netlify and 
 | `AUTH_ENABLED` | `true` only after the identity release gate passes |
 | `AUTH_DATA_PROCESSING_APPROVED` | `true` only after the approved provider arrangement is recorded |
 | `AUTH_REQUIRE_MFA_FOR_STAFF` | `true`; staff tokens must include an MFA authentication-method claim |
+| `AUTH_PROVIDER` | `entra` for Microsoft Entra External ID (changes password-reset handling) |
+| `AUTH_REQUIRED_SCOPE` | Permission every customer/staff token must carry; `access_as_user` for Entra |
+| `AUTH_DEFAULT_ROLE` | Role for customers the provider assigns none to; `buyer` (default) |
+| `AUTH_EMAIL_VERIFIED_BY_PROVIDER` | `true` for Entra: it verifies email at sign-up but sends no `email_verified` claim |
+| `AUTH_STAFF_MFA_ENFORCED_BY_PROVIDER` | `true` for Entra when a Conditional Access policy requires MFA for staff (tokens carry no `amr`) |
 | `SELLER_ONBOARDING_ENABLED` | `true` only for the approved onboarding release |
 | `REVIEWS_ENABLED` | `false` until checkout creates real orders; then `true` |
 | `MESSAGING_ENABLED` | `false` until sign-in is live; then `true` |
@@ -105,4 +110,24 @@ People open a request from `/help` (signed in) or report a listing, shop or revi
 Target times by priority: urgent (scam or banned-item reports) first reply in 4 hours, decision in 2 days; high (order problems, other reports, privacy) 24 hours and 5 days; normal 48 hours and 10 days. Privacy requests use `PRIVACY_REQUEST_RESPONSE_DAYS`. The staff queue puts overdue cases first. Staff can reply, add internal notes, assign, change priority with a reason, decide, and reopen; each action is written to `audit_events` and shown in the case history. Staff can't handle their own request. A requester can ask once, within 30 days, for a decision to be looked at again; the original decision-maker can't handle that second look.
 
 Switched off with `SUPPORT_ENABLED=false` until sign-in is live and someone is assigned to answer requests. Before switching on: confirm response deadlines (consumer protection and data protection) with counsel, decide how to verify identity for privacy requests, and set up email so people without an account get replies.
+
+## Sign-in with Microsoft Entra External ID
+
+Tenant `c43c8626-8450-43f8-9448-f6480da89b89` (external tenant "katondo", billed through the PMCS subscription). App registrations: `katondo-api` (`1d5c628b-8e5b-41a0-b586-1ab76ebda581`, exposes `access_as_user`, defines the app roles, access token version 2), `katondo-web` (`7121f258-85d9-4d20-aa92-f5532142f568`, single-page app) and `katondo-app` (`04b0ef17-8aea-4cd5-b300-51f103d8409f`, mobile, redirect `com.katondo.marketplace://auth`). These IDs are public identifiers, not secrets. User flow `signup_signin` (email with password; Google; Facebook in development mode).
+
+| Where | Variable | Value |
+|---|---|---|
+| Railway API | `AUTH_PROVIDER` | `entra` |
+| Railway API | `AUTH_ISSUER` | `https://c43c8626-8450-43f8-9448-f6480da89b89.ciamlogin.com/c43c8626-8450-43f8-9448-f6480da89b89/v2.0` |
+| Railway API | `AUTH_JWKS_URL` | `https://c43c8626-8450-43f8-9448-f6480da89b89.ciamlogin.com/c43c8626-8450-43f8-9448-f6480da89b89/discovery/v2.0/keys` |
+| Railway API | `AUTH_AUDIENCE` | `1d5c628b-8e5b-41a0-b586-1ab76ebda581` |
+| Railway API | `AUTH_REQUIRED_SCOPE` | `access_as_user` |
+| Railway API | `AUTH_EMAIL_VERIFIED_BY_PROVIDER`, `AUTH_REQUIRE_MFA_FOR_STAFF`, `AUTH_STAFF_MFA_ENFORCED_BY_PROVIDER` | `true` |
+| Netlify | `NEXT_PUBLIC_AUTH_PROVIDER` | `entra` |
+| Netlify | `NEXT_PUBLIC_AUTH_AUTHORITY` | `https://c43c8626-8450-43f8-9448-f6480da89b89.ciamlogin.com/c43c8626-8450-43f8-9448-f6480da89b89/v2.0` |
+| Netlify | `NEXT_PUBLIC_AUTH_CLIENT_ID` | `7121f258-85d9-4d20-aa92-f5532142f568` |
+| Netlify | `NEXT_PUBLIC_AUTH_SCOPE` | `openid profile email offline_access api://1d5c628b-8e5b-41a0-b586-1ab76ebda581/access_as_user` |
+| Netlify | `NEXT_PUBLIC_AUTH_ENABLED` | `false` until the data-protection approval; the website offers no sign-in while false |
+
+`AUTH_ENABLED` and `AUTH_DATA_PROCESSING_APPROVED` stay `false` until Zambia's data protection office approves storing sign-in data with Microsoft (EMEA). Sellers' roles come from Katondo's database (a verified seller record), not from Entra; staff roles are assigned in Entra under Enterprise applications → katondo-api → Users and groups. In katondo-api → Token configuration, add the optional claim `email` to the access token so the API receives the customer's email.
 
