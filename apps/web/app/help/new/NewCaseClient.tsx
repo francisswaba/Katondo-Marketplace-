@@ -37,7 +37,7 @@ export default function NewCaseClient({ category: initialCategory, subjectId, su
 
   const chosen = supportCategories.find((item) => item.id === category);
   const reporting = Boolean(chosen?.id.startsWith('report_'));
-  const choices = supportCategories.filter((item) => !item.id.startsWith('report_'));
+  const choices = supportCategories.filter((item) => !item.id.startsWith('report_') && item.id !== 'account_recovery');
   const returnTo = `/help/new?${new URLSearchParams({ ...(initialCategory ? { category: initialCategory } : {}), ...(subjectId ? { subject: subjectId } : {}), ...(subjectLabel ? { label: subjectLabel } : {}) })}`;
 
   async function submit(event: FormEvent) {
@@ -74,6 +74,7 @@ export default function NewCaseClient({ category: initialCategory, subjectId, su
         <p className="help-muted">Sign in so we can reply to you and you can follow your request.</p>
         <button className="button-primary" type="button" disabled={!signInAvailable} onClick={() => signIn(returnTo)}>Sign in</button>
         <p className="help-note">Asking about your personal data and don’t have an account? <a href="/help/privacy">Use the privacy request form</a>.</p>
+        <p className="help-note">Can’t use the email on your account any more? <a href="/help/recover">Recover your account</a>.</p>
       </div>
     );
   }

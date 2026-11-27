@@ -13,7 +13,7 @@ import {
   type UserRole,
 } from './access.js';
 import { createAdministrationRouter } from './admin.js';
-import { createAccountRouter } from './account.js';
+import { createAccountRouter, purgeClosedAccounts } from './account.js';
 import { createListingsRouter, listingColumns, mapListingRow } from './listings.js';
 import { productTypeIds } from '@katondo/contracts';
 import { recordActivity, scheduleActivityRetention } from './activity.js';
@@ -148,15 +148,29 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
       return;
     }
 
-    // Sellers are approved in Katondo, not in the sign-in provider: add the seller role from the database.
+    // One look-up for the account's status (closing/closed) and, for customers, a verified seller record.
     const isStaff = roles.some((role) => staffRoles.includes(role));
+    const account = await pool.query(`
+      SELECT u.status, u.deletion_due_at, (
+        SELECT s.seller_type FROM sellers s
+        WHERE s.user_id = u.id AND s.verification_status = 'verified' LIMIT 1
+      ) AS seller_type
+      FROM users u WHERE u.identity_subject = $1
+    `, [payload.sub]);
+    const accountRow = account.rows[0] as { status: 'active' | 'pending_deletion' | 'deleted'; deletion_due_at: Date | null; seller_type: string | null } | undefined;
+    if (accountRow?.status === 'deleted') {
+      response.status(403).json({ error: 'This Katondo account was closed.', code: 'account_closed' });
+      return;
+    }
+    // While an account is closing, only the account page and "restore" work.
+    const closingAllowed = ['/api/account', '/api/account/settings', '/api/account/restore'];
+    if (accountRow?.status === 'pending_deletion' && !closingAllowed.includes(request.path)) {
+      response.status(403).json({ error: 'This account is being closed. Restore it from your account page to use Katondo again.', code: 'account_pending_deletion' });
+      return;
+    }
+    // Sellers are approved in Katondo, not in the sign-in provider: add the seller role from the database.
     if (!isStaff) {
-      const seller = await pool.query(`
-        SELECT s.seller_type FROM sellers s JOIN users u ON u.id = s.user_id
-        WHERE u.identity_subject = $1 AND s.verification_status = 'verified'
-        LIMIT 1
-      `, [payload.sub]);
-      const sellerType = seller.rows[0]?.seller_type as string | undefined;
+      const sellerType = accountRow?.seller_type ?? undefined;
       if (sellerType === 'individual' && !roles.includes('individual_seller')) roles.push('individual_seller');
       if (sellerType === 'business' && !roles.includes('business_seller')) roles.push('business_seller');
       if (!roles.includes(defaultCustomerRole) && allowedRoles.includes(defaultCustomerRole)) roles.push(defaultCustomerRole);
@@ -210,6 +224,9 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
       email,
       phone: typeof payload.phone_number === 'string' ? payload.phone_number : undefined,
       emailVerified: payload.email_verified === true || (emailVerifiedByProvider && Boolean(email)),
+      objectId: typeof payload.oid === 'string' ? payload.oid : undefined,
+      accountStatus: accountRow?.status ?? 'active',
+      deletionDueAt: accountRow?.deletion_due_at instanceof Date ? accountRow.deletion_due_at.toISOString() : null,
       phoneVerified: payload.phone_number_verified === true,
     };
     next();
@@ -528,6 +545,13 @@ app.use(createMessagingRouter(pool, authenticate));
 app.use(createSupportRouter(pool, authenticate));
 
 scheduleActivityRetention(pool);
+
+// Anonymise accounts whose 30-day restore period has ended: shortly after start, then every 6 hours.
+const runAccountPurge = () => purgeClosedAccounts(pool).then((count) => {
+  if (count) console.log(`Anonymised ${count} closed account(s).`);
+}).catch((error) => console.error('Closed-account purge failed', error));
+setTimeout(runAccountPurge, 60_000).unref();
+setInterval(runAccountPurge, 6 * 3_600_000).unref();
 
 app.listen(port, () => {
   console.log(`Katondo API listening on http://localhost:${port}`);

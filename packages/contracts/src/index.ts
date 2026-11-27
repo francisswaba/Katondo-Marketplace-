@@ -377,7 +377,7 @@ export type FeatureFlags = { reviews: boolean; messaging: boolean; support: bool
 
 export type SupportCategory =
   | 'order_problem' | 'report_listing' | 'report_shop' | 'report_review'
-  | 'account' | 'seller_decision' | 'privacy_request' | 'other';
+  | 'account' | 'seller_decision' | 'privacy_request' | 'account_recovery' | 'other';
 export type SupportStatus = 'received' | 'in_review' | 'waiting_on_requester' | 'resolved';
 export type SupportPriority = 'urgent' | 'high' | 'normal' | 'low';
 export type SupportReportReason = 'counterfeit' | 'prohibited' | 'scam' | 'misleading' | 'offensive' | 'other';
@@ -391,6 +391,7 @@ export const supportCategories: Array<{ id: SupportCategory; label: string; desc
   { id: 'account', label: 'My account', description: 'Signing in, account settings or a restriction on your account.' },
   { id: 'seller_decision', label: 'A decision about my shop', description: 'Seller application, removed listing or a shop restriction you disagree with.' },
   { id: 'privacy_request', label: 'My personal data', description: 'See, correct or delete the information Katondo holds about you.' },
+  { id: 'account_recovery', label: 'Recover my account', description: 'You can no longer use the email address on your Katondo account.' },
   { id: 'other', label: 'Something else', description: 'Anything not listed here, including a complaint about Katondo.' },
 ];
 
@@ -438,6 +439,8 @@ export type SupportCaseSummary = {
 export type SupportCaseMessage = {
   id: string;
   author: 'you' | 'katondo' | 'system';
+  /** For Katondo replies: the staff member's first name and staff number, e.g. "Mwila, S-0012". */
+  staffLabel?: string | null;
   body: string;
   createdAt: string;
 };
@@ -454,3 +457,6 @@ export type SupportCaseDetail = SupportCaseSummary & {
   appealReference: string | null;
   appealOfReference: string | null;
 };
+
+/** Days a closed account can be restored before Katondo anonymises it. */
+export const accountRestoreDays = 30;

@@ -45,6 +45,7 @@ This repository now has a deployment path for the web storefront on Netlify and 
 | `REVIEWS_ENABLED` | `false` until checkout creates real orders; then `true` |
 | `MESSAGING_ENABLED` | `false` until sign-in is live; then `true` |
 | `SUPPORT_ENABLED` | `false` until sign-in is live and complaint handling is staffed; then `true` |
+| `ACCOUNT_RECOVERY_HOLD_HOURS` | Hours a lost-email recovery waits before staff may approve it (default `72`) |
 | `PRIVACY_REQUEST_RESPONSE_DAYS` | Days to answer a personal-data request (default `30`; confirm the legal deadline with counsel) |
 | `SELLER_DATA_PROCESSING_APPROVED` | `true` only after the data-processing release gate passes |
 | `SELLER_TERMS_VERSION` / `SELLER_TERMS_URL` | Exact published seller terms version and HTTPS URL |
@@ -130,4 +131,12 @@ Tenant `c43c8626-8450-43f8-9448-f6480da89b89` (external tenant "katondo", billed
 | Netlify | `NEXT_PUBLIC_AUTH_ENABLED` | `false` until the data-protection approval; the website offers no sign-in while false |
 
 `AUTH_ENABLED` and `AUTH_DATA_PROCESSING_APPROVED` stay `false` until Zambia's data protection office approves storing sign-in data with Microsoft (EMEA). Sellers' roles come from Katondo's database (a verified seller record), not from Entra; staff roles are assigned in Entra under Enterprise applications → katondo-api → Users and groups. In katondo-api → Token configuration, add the optional claim `email` to the access token so the API receives the customer's email.
+
+## Closing accounts, lost-email recovery and staff numbers
+
+**Closing an account** (`/account`, migration `012_account_lifecycle_staff_ids.sql`, `apps/api/src/account.ts`): the person types CLOSE; open orders block it; staff accounts can't be closed this way. The account, shop and listings are hidden at once and every other API route answers `account_pending_deletion`. Signing in within 30 days and choosing **Restore my account** brings everything back. The API checks every 6 hours for accounts past 30 days and anonymises them (contact details, preferences, blocks, sent message text removed; shop renamed "Closed shop", listings removed; orders, payments and help cases kept), then opens a help case asking staff to delete the person's sign-in account in Entra by its object ID.
+
+**Lost email** (`/help/recover`, no sign-in): creates an `account_recovery` help case. Staff see the matching Katondo account, the hold (no approval for `ACCOUNT_RECOVERY_HOLD_HOURS`, default 72) and step-by-step guidance. One staff member records how they checked identity; a different staff member must approve or decline (enforced in the API and the database). After approving, staff change the person's sign-in email in Entra (Users → the person → edit), and the person sets a new password with **Forgot password?**. Recovery of a staff account must be handled by a top administrator. Email notifications don't exist yet, so staff contact the person by email themselves.
+
+**Staff numbers**: every staff record gets a number such as `S-0001`, shown with their first name on replies to customers ("Mwila, S-0003, Katondo") and in case histories. Top administrators set job title and department in the staff directory. Anyone can check a number at `/help/check-staff`; only first name and job title of active staff are shown. Recommended: copy each staff number into the Entra user's **Employee ID** field so the two match.
 

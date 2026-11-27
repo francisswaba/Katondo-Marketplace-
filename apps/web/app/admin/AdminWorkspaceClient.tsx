@@ -31,7 +31,7 @@ type Capabilities = {
 };
 
 type StaffSession = {
-  staff: { display_name: string; job_title?: string; status: string; roles: string[] };
+  staff: { display_name: string; job_title?: string; department?: string; staff_number?: string; status: string; roles: string[] };
   capabilities: Capabilities;
 };
 
@@ -87,7 +87,9 @@ type ServiceAgent = {
 type StaffMember = {
   user_id: string;
   display_name: string;
+  staff_number?: string;
   job_title?: string;
+  department?: string;
   roles: string[];
   status: 'active' | 'suspended' | 'departed';
   email?: string;
@@ -274,6 +276,27 @@ export default function AdminWorkspaceClient() {
     }
   }
 
+  async function editStaffProfile(staffMember: StaffMember) {
+    if (!user?.access_token) return;
+    const jobTitle = window.prompt(`Job title for ${staffMember.display_name} (shown when customers check their staff number)`, staffMember.job_title ?? '');
+    if (jobTitle === null) return;
+    const department = window.prompt(`Department for ${staffMember.display_name}`, staffMember.department ?? '');
+    if (department === null) return;
+    setSaving(`staff-${staffMember.user_id}`);
+    setMessage('');
+    try {
+      const payload = await apiRequest<{ staff: StaffMember }>(`/api/admin/staff/${staffMember.user_id}/profile`, user.access_token, {
+        method: 'PATCH', body: JSON.stringify({ jobTitle, department }),
+      });
+      setStaffMembers((current) => current.map((member) => member.user_id === staffMember.user_id ? { ...member, ...payload.staff } : member));
+      setMessage(`Saved details for ${staffMember.display_name}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'The staff details could not be saved.');
+    } finally {
+      setSaving('');
+    }
+  }
+
   async function changeStaffStatus(staffMember: StaffMember) {
     if (!user?.access_token) return;
     const status = staffMember.status === 'active' ? 'suspended' : 'active';
@@ -334,7 +357,7 @@ export default function AdminWorkspaceClient() {
 
       {session.capabilities.viewReviews && <ReviewModerationPanel token={user.access_token} canModerate={Boolean(session.capabilities.moderateReviews)} />}
 
-      {session.capabilities.viewStaff && <section className="admin-section"><div className="admin-section-title"><div><p className="eyebrow">Access control</p><h2>Staff directory</h2></div><span>Roles come from the identity provider</span></div><div className="agent-list">{staffMembers.map((staffMember) => <article key={staffMember.user_id}><div><strong>{staffMember.display_name}</strong><span className={`status-pill ${staffMember.status === 'active' ? 'active' : 'disabled'}`}>{staffMember.status}</span><p>{staffMember.email || staffMember.phone || 'Verified work identity'}</p><small>{staffMember.roles.map(friendlyRole).join(' · ')}{staffMember.last_sign_in_at ? ` · Last sign-in ${new Date(staffMember.last_sign_in_at).toLocaleString('en-ZM')}` : ''}</small></div>{session.capabilities.manageStaff && staffMember.status !== 'departed' && <button type="button" disabled={saving === `staff-${staffMember.user_id}`} onClick={() => changeStaffStatus(staffMember)}>{staffMember.status === 'active' ? 'Suspend' : 'Reactivate'}</button>}</article>)}{staffMembers.length === 0 && <div className="admin-empty">Staff members appear after their first successful staff sign-in.</div>}</div></section>}
+      {session.capabilities.viewStaff && <section className="admin-section"><div className="admin-section-title"><div><p className="eyebrow">Access control</p><h2>Staff directory</h2></div><span>Roles come from the identity provider</span></div><div className="agent-list">{staffMembers.map((staffMember) => <article key={staffMember.user_id}><div><strong>{staffMember.display_name}</strong>{staffMember.staff_number && <span className="staff-number">{staffMember.staff_number}</span>}<span className={`status-pill ${staffMember.status === 'active' ? 'active' : 'disabled'}`}>{staffMember.status}</span><p>{[staffMember.job_title, staffMember.department].filter(Boolean).join(', ') || 'No job title yet'}</p><p>{staffMember.email || staffMember.phone || 'Verified work identity'}</p><small>{staffMember.roles.map(friendlyRole).join(', ')}{staffMember.last_sign_in_at ? `. Last sign-in ${new Date(staffMember.last_sign_in_at).toLocaleString('en-ZM')}` : ''}</small></div>{session.capabilities.manageStaff && staffMember.status !== 'departed' && <div className="staff-actions"><button type="button" disabled={saving === `staff-${staffMember.user_id}`} onClick={() => editStaffProfile(staffMember)}>Edit details</button><button type="button" disabled={saving === `staff-${staffMember.user_id}`} onClick={() => changeStaffStatus(staffMember)}>{staffMember.status === 'active' ? 'Suspend' : 'Reactivate'}</button></div>}</article>)}{staffMembers.length === 0 && <div className="admin-empty">Staff members appear after their first successful staff sign-in.</div>}</div></section>}
 
       {session.capabilities.manageActivity && settings && <section className="admin-section"><div className="admin-section-title"><div><p className="eyebrow">Data governance</p><h2>Activity collection</h2></div><span>Top administrator only</span></div><p className="section-copy">Each category is optional and starts disabled. Katondo never records passwords, access tokens, payment credentials, identity documents, private message contents, or form-field contents in this ledger.</p><form className="settings-form" onSubmit={saveSettings}>{([
         ['collectBuyerActivity', 'Buyer activity', 'Approved account events such as catalogue views, searches, and checkout starts.'],

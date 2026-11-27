@@ -104,7 +104,7 @@ export default function CaseClient({ reference, justOpened }: { reference: strin
       <ol className="case-thread">
         {detail.messages.map((message) => (
           <li key={message.id} className={`from-${message.author}`}>
-            <span className="case-author">{message.author === 'you' ? 'You' : message.author === 'katondo' ? 'Katondo' : 'Update'}<time dateTime={message.createdAt}>{when(message.createdAt)}</time></span>
+            <span className="case-author">{message.author === 'you' ? 'You' : message.author === 'katondo' ? (message.staffLabel ? `${message.staffLabel}, Katondo` : 'Katondo') : 'Update'}<time dateTime={message.createdAt}>{when(message.createdAt)}</time></span>
             <p>{message.body}</p>
           </li>
         ))}

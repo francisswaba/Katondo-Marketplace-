@@ -68,14 +68,38 @@ function cleanText(value: unknown, max: number) {
 
 /** In-memory limit for requests from people without an account. Addresses are never stored. */
 const anonymousHits = new Map<string, number[]>();
-function anonymousLimited(request: Request) {
-  const key = String(request.ip ?? 'unknown');
+function anonymousLimited(request: Request, bucket = 'forms', perHour = 5) {
+  const key = `${bucket}:${String(request.ip ?? 'unknown')}`;
   const now = Date.now();
   const recent = (anonymousHits.get(key) ?? []).filter((time) => now - time < 3_600_000);
   recent.push(now);
   anonymousHits.set(key, recent);
   if (anonymousHits.size > 5000) anonymousHits.clear();
-  return recent.length > 5;
+  return recent.length > perHour;
+}
+
+/** Hours a lost-email recovery waits before staff may approve it, so the real owner can object. */
+const recoveryHoldHours = () => Math.max(1, Number(process.env.ACCOUNT_RECOVERY_HOLD_HOURS) || 72);
+
+/** First name and staff number, shown to customers on staff replies, e.g. "Mwila, S-0012". */
+export function staffLabel(displayName: string | null | undefined, staffNumber: string | null | undefined) {
+  const first = (displayName ?? '').trim().split(/\s+/)[0] || 'Katondo';
+  return staffNumber ? `${first}, ${staffNumber}` : first;
+}
+
+/** Opens a case raised by Katondo itself (no customer message), e.g. a clean-up task for staff. */
+export async function createSystemSupportCase(client: PoolClient, input: { requesterUserId: string; summary: string; body: string; priority?: SupportPriority }) {
+  const priority = input.priority ?? 'normal';
+  const reference = (await client.query(`SELECT 'KT-' || to_char(NOW(), 'YYYY') || '-' || lpad(nextval('support_case_number_seq')::text, 5, '0') AS reference`)).rows[0].reference as string;
+  const due = dueDates(priority, 'account');
+  const created = await client.query(`
+    INSERT INTO support_cases (reference, category, summary, requester_user_id, priority, first_response_due_at, resolution_due_at, requester_last_read_at)
+    VALUES ($1, 'account', $2, $3, $4, $5, $6, NOW()) RETURNING id
+  `, [reference, input.summary.slice(0, supportSummaryMaxLength), input.requesterUserId, priority, due.firstResponse, due.resolution]);
+  await client.query(`INSERT INTO support_case_messages (case_id, author_type, body, internal) VALUES ($1, 'system', $2, FALSE)`, [created.rows[0].id, input.body]);
+  await client.query(`INSERT INTO audit_events (actor_user_id, event_type, subject_type, subject_id, details) VALUES (NULL, 'support.case_opened', 'support_case', $1, $2)`,
+    [created.rows[0].id, JSON.stringify({ category: 'account', priority, system: true })]);
+  return reference;
 }
 
 export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
@@ -177,7 +201,7 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
     const reportReason = body.reportReason ? supportReportReasons.find((item) => item.id === body.reportReason)?.id ?? null : null;
     const privacyType = body.privacyRequestType ? privacyRequestTypes.find((item) => item.id === body.privacyRequestType)?.id ?? null : null;
 
-    if (!category) return void response.status(400).json({ error: 'Choose what your request is about.' });
+    if (!category || category.id === 'account_recovery') return void response.status(400).json({ error: 'Choose what your request is about.' });
     if (!summary || summary.length < 3) return void response.status(400).json({ error: `Give your request a short title (up to ${supportSummaryMaxLength} characters).` });
     if (!details || details.length < 10) return void response.status(400).json({ error: 'Describe what happened in at least 10 characters.' });
     if (category.id.startsWith('report_') && !reportReason) return void response.status(400).json({ error: 'Choose why you are reporting this.' });
@@ -257,6 +281,65 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
     }
   });
 
+  // No account access: someone who can no longer reach the email address on their account.
+  router.post('/api/support/account-recovery', requireSupport, async (request, response) => {
+    const body = request.body ?? {};
+    if (body.website) return void response.status(201).json({ reference: null }); // Honeypot field: bots fill it in.
+    if (anonymousLimited(request)) return void response.status(429).json({ error: 'Too many requests. Try again in an hour.' });
+    const name = cleanText(body.name, 120);
+    const accountEmail = typeof body.accountEmail === 'string' ? body.accountEmail.trim().toLowerCase() : '';
+    const contactEmail = typeof body.contactEmail === 'string' ? body.contactEmail.trim().toLowerCase() : '';
+    const phone = cleanText(body.phone, 40);
+    const shopName = cleanText(body.shopName, 120);
+    const details = cleanText(body.details, supportMessageMaxLength);
+    if (!name || name.length < 2) return void response.status(400).json({ error: 'Enter your name as it appears on your account.' });
+    if (!emailPattern.test(accountEmail)) return void response.status(400).json({ error: 'Enter the email address your Katondo account uses.' });
+    if (!emailPattern.test(contactEmail)) return void response.status(400).json({ error: 'Enter a new email address we can reach you on.' });
+    if (accountEmail === contactEmail) return void response.status(400).json({ error: 'Your new email must be different from the one you can no longer use.' });
+    if (!details || details.length < 20) return void response.status(400).json({ error: 'Tell us what you can about your account, in at least 20 characters.' });
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const reference = await nextReference(client);
+      const due = dueDates('high', 'account_recovery');
+      const created = await client.query(`
+        INSERT INTO support_cases (reference, category, summary, contact_name, contact_email, contact_phone, recovery_account_email,
+          priority, first_response_due_at, resolution_due_at, hold_until)
+        VALUES ($1, 'account_recovery', 'Recover an account: lost access to email', $2, $3, $4, $5, 'high', $6, $7, NOW() + make_interval(hours => $8))
+        RETURNING id
+      `, [reference, name, contactEmail, phone || null, accountEmail, due.firstResponse, due.resolution, recoveryHoldHours()]);
+      const caseId = created.rows[0].id as string;
+      await client.query(`INSERT INTO support_case_messages (case_id, author_type, body) VALUES ($1, 'requester', $2)`,
+        [caseId, `${details}${shopName ? `\n\nShop name: ${shopName}` : ''}`]);
+      await audit(client, null, 'support.case_opened', caseId, { category: 'account_recovery', priority: 'high' });
+      await client.query('COMMIT');
+      response.status(201).json({ reference, holdHours: recoveryHoldHours() });
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      console.error('Account recovery request failed', error);
+      response.status(503).json({ error: 'Your request could not be sent. Try again in a moment.' });
+    } finally {
+      client.release();
+    }
+  });
+
+  // Anyone: check that a staff number belongs to someone who works for Katondo right now.
+  router.get('/api/staff/verify/:number', requireSupport, async (request, response) => {
+    if (anonymousLimited(request, 'staff-check', 30)) return void response.status(429).json({ error: 'Too many checks. Try again in an hour.' });
+    const number = String(request.params.number).trim().toUpperCase();
+    if (!/^S-\d{4,6}$/.test(number)) return void response.json({ valid: false });
+    try {
+      const result = await pool.query(`SELECT display_name, job_title FROM staff_members WHERE staff_number = $1 AND status = 'active'`, [number]);
+      const row = result.rows[0];
+      response.json(row
+        ? { valid: true, staffNumber: number, firstName: staffLabel(row.display_name, null), jobTitle: row.job_title ?? null }
+        : { valid: false });
+    } catch (error) {
+      console.error('Staff check failed', error);
+      response.status(503).json({ error: 'Staff checks are temporarily unavailable.' });
+    }
+  });
+
   // Signed-in: my cases.
   router.get('/api/support/cases', authenticate, requireSupport, async (request: AuthenticatedRequest, response) => {
     try {
@@ -285,7 +368,9 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
       const row = userId ? await caseForRequester(String(request.params.reference), userId) : null;
       if (!row) return void response.status(404).json({ error: 'Request not found.' });
       const messages = await pool.query(
-        `SELECT id, author_type, body, created_at FROM support_case_messages WHERE case_id = $1 AND internal = FALSE ORDER BY created_at`,
+        `SELECT m.id, m.author_type, m.body, m.created_at, s.display_name AS staff_name, s.staff_number
+         FROM support_case_messages m LEFT JOIN staff_members s ON s.user_id = m.author_user_id AND m.author_type = 'staff'
+         WHERE m.case_id = $1 AND m.internal = FALSE ORDER BY m.created_at`,
         [row.id],
       );
       await pool.query(`UPDATE support_cases SET requester_last_read_at = NOW() WHERE id = $1`, [row.id]);
@@ -300,6 +385,7 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
         messages: messages.rows.map((message): SupportCaseMessage => ({
           id: message.id,
           author: message.author_type === 'requester' ? 'you' : message.author_type === 'staff' ? 'katondo' : 'system',
+          staffLabel: message.author_type === 'staff' ? staffLabel(message.staff_name, message.staff_number) : null,
           body: message.body,
           createdAt: iso(message.created_at)!,
         })),
@@ -409,7 +495,8 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
           c.first_response_due_at, c.resolution_due_at, c.first_response_at, c.appeal_of_case_id,
           c.subject_label, assignee.display_name AS assignee_name, c.assigned_to_user_id = $3 AS assigned_to_me,
           (c.status <> 'resolved' AND ((c.first_response_at IS NULL AND c.first_response_due_at < NOW()) OR c.resolution_due_at < NOW())) AS overdue,
-          CASE WHEN c.requester_user_id IS NULL THEN COALESCE(c.contact_name, 'No account') ELSE 'Signed-in user' END AS requester
+          CASE WHEN c.requester_user_id IS NULL THEN COALESCE(c.contact_name, 'No account') ELSE 'Signed-in user' END AS requester,
+          c.hold_until, c.identity_verified_at
         FROM support_cases c
         LEFT JOIN staff_members assignee ON assignee.user_id = c.assigned_to_user_id
         WHERE ($1 = 'resolved' AND c.status = 'resolved' OR $1 <> 'resolved' AND c.status <> 'resolved')
@@ -437,6 +524,7 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
           resolutionDueAt: iso(row.resolution_due_at), firstResponseAt: iso(row.first_response_at), isAppeal: Boolean(row.appeal_of_case_id),
           subjectLabel: row.subject_label, assigneeName: row.assignee_name, assignedToMe: Boolean(row.assigned_to_me),
           overdue: Boolean(row.overdue), requester: row.requester,
+          holdUntil: iso(row.hold_until), identityVerified: Boolean(row.identity_verified_at),
         })),
       });
     } catch (error) {
@@ -452,11 +540,11 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
       if (!row) return void response.status(404).json({ error: 'Case not found.' });
       const [messages, history] = await Promise.all([
         pool.query(`
-          SELECT m.id, m.author_type, m.body, m.internal, m.created_at, s.display_name AS staff_name
+          SELECT m.id, m.author_type, m.body, m.internal, m.created_at, s.display_name AS staff_name, s.staff_number
           FROM support_case_messages m LEFT JOIN staff_members s ON s.user_id = m.author_user_id AND m.author_type = 'staff'
           WHERE m.case_id = $1 ORDER BY m.created_at`, [row.id]),
         pool.query(`
-          SELECT a.event_type, a.details, a.created_at, s.display_name AS actor_name
+          SELECT a.event_type, a.details, a.created_at, s.display_name AS actor_name, s.staff_number AS actor_number
           FROM audit_events a LEFT JOIN staff_members s ON s.user_id = a.actor_user_id
           WHERE a.subject_type = 'support_case' AND a.subject_id = $1 ORDER BY a.created_at`, [row.id]),
       ]);
@@ -471,16 +559,47 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
         createdAt: iso(row.created_at), firstResponseDueAt: iso(row.first_response_due_at), resolutionDueAt: iso(row.resolution_due_at),
         firstResponseAt: iso(row.first_response_at), appealOfReference: row.appeal_of_reference, appealReference: row.appeal_reference,
         messages: messages.rows.map((message) => ({
-          id: message.id, author: message.author_type, staffName: message.staff_name, body: message.body,
+          id: message.id, author: message.author_type, staffName: message.staff_name ? staffLabel(message.staff_name, message.staff_number) : null, body: message.body,
           internal: message.internal, createdAt: iso(message.created_at),
         })),
-        history: history.rows.map((event) => ({ event: event.event_type, details: event.details, actorName: event.actor_name, createdAt: iso(event.created_at) })),
+        history: history.rows.map((event) => ({ event: event.event_type, details: event.details, actorName: event.actor_name ? staffLabel(event.actor_name, event.actor_number) : null, createdAt: iso(event.created_at) })),
+        recovery: row.category === 'account_recovery' ? await recoveryDetails(row) : null,
       });
     } catch (error) {
       console.error('Support case detail failed', error);
       response.status(503).json({ error: 'The case could not be loaded.' });
     }
   });
+
+  /** What staff need to check a lost-email recovery: the hold, the identity check, and the account it names. */
+  async function recoveryDetails(row: Record<string, any>) {
+    const [verifier, account] = await Promise.all([
+      row.identity_verified_by_user_id
+        ? pool.query(`SELECT display_name, staff_number FROM staff_members WHERE user_id = $1`, [row.identity_verified_by_user_id])
+        : Promise.resolve(null),
+      pool.query(`
+        SELECT u.id, u.status, u.created_at,
+          EXISTS (SELECT 1 FROM staff_members sm WHERE sm.user_id = u.id) AS is_staff,
+          (SELECT array_agg(s.display_name) FROM sellers s WHERE s.user_id = u.id) AS shops,
+          (SELECT COUNT(*) FROM orders o WHERE o.buyer_user_id = u.id) AS orders
+        FROM users u WHERE lower(u.email) = $1
+      `, [row.recovery_account_email]),
+    ]);
+    const match = account.rows[0];
+    return {
+      accountEmail: row.recovery_account_email,
+      contactPhone: row.contact_phone,
+      holdUntil: iso(row.hold_until),
+      holdOver: new Date(row.hold_until).getTime() <= Date.now(),
+      identityVerifiedBy: verifier?.rows[0] ? staffLabel(verifier.rows[0].display_name, verifier.rows[0].staff_number) : null,
+      identityVerifiedAt: iso(row.identity_verified_at),
+      identityEvidence: row.identity_evidence,
+      outcome: row.recovery_outcome,
+      account: match
+        ? { found: true, status: match.status, createdAt: iso(match.created_at), isStaff: match.is_staff, shops: match.shops ?? [], orders: Number(match.orders) }
+        : { found: false },
+    };
+  }
 
   /** Runs a staff change on an open case inside a transaction, after the conflict checks. */
   async function staffChange(
@@ -567,19 +686,46 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
     });
   });
 
+  // Lost-email recovery: record how the person's identity was checked. Someone else must then decide.
+  router.post('/api/admin/support/cases/:reference/verify-identity', authenticate, requireAnyRole([...supportStaffRoles]), (request: AuthenticatedRequest, response) => {
+    const evidence = cleanText(request.body?.evidence, 2000);
+    if (!evidence || evidence.length < 20) return void response.status(400).json({ error: 'Describe how you checked their identity, in at least 20 characters.' });
+    return staffChange(request, response, async (client, row, staffUserId) => {
+      if (row.category !== 'account_recovery') return { error: 'Identity checks are only for account recovery requests.' };
+      if (row.status === 'resolved') return { error: 'This case is resolved.' };
+      if (row.identity_verified_by_user_id) return { error: 'An identity check is already recorded on this case.' };
+      await client.query(`UPDATE support_cases SET identity_verified_by_user_id = $2, identity_verified_at = NOW(), identity_evidence = $3,
+        status = CASE WHEN status = 'received' THEN 'in_review' ELSE status END WHERE id = $1`, [row.id, staffUserId, evidence]);
+      await client.query(`INSERT INTO support_case_messages (case_id, author_type, author_user_id, body, internal) VALUES ($1, 'staff', $2, $3, TRUE)`,
+        [row.id, staffUserId, `Identity check recorded:\n\n${evidence}`]);
+      await audit(client, staffUserId, 'support.identity_verified', row.id);
+      return {};
+    });
+  });
+
   // Decide the case. The decision is shown to the requester.
   router.post('/api/admin/support/cases/:reference/resolve', authenticate, requireAnyRole([...supportStaffRoles]), (request: AuthenticatedRequest, response) => {
     const resolution = cleanText(request.body?.resolution, 2000);
+    const outcome = request.body?.outcome === 'approved' ? 'approved' : request.body?.outcome === 'declined' ? 'declined' : null;
     if (!resolution || resolution.length < 10) return void response.status(400).json({ error: 'Explain the decision to the requester in at least 10 characters.' });
     return staffChange(request, response, async (client, row, staffUserId) => {
       if (row.status === 'resolved') return { error: 'This case is already resolved.' };
+      if (row.category === 'account_recovery') {
+        if (!outcome) return { status: 400, error: 'Choose whether the recovery is approved or declined.' };
+        if (outcome === 'approved') {
+          if (new Date(row.hold_until).getTime() > Date.now()) return { error: `Recovery can’t be approved before ${new Date(row.hold_until).toISOString()}, so the real owner has time to object.` };
+          if (!row.identity_verified_by_user_id) return { error: 'Record an identity check before approving a recovery.' };
+          if (row.identity_verified_by_user_id === staffUserId) return { error: 'You recorded the identity check, so a different staff member must approve this recovery.' };
+        }
+        await client.query(`UPDATE support_cases SET recovery_outcome = $2 WHERE id = $1`, [row.id, outcome]);
+      }
       await client.query(`
         UPDATE support_cases SET status = 'resolved', resolution = $2, resolved_by_user_id = $3, resolved_at = NOW(),
           first_response_at = COALESCE(first_response_at, NOW()), assigned_to_user_id = COALESCE(assigned_to_user_id, $3)
         WHERE id = $1`, [row.id, resolution, staffUserId]);
       await client.query(`INSERT INTO support_case_messages (case_id, author_type, author_user_id, body, internal) VALUES ($1, 'staff', $2, $3, $4)`,
         [row.id, staffUserId, row.requester_user_id ? `Decision: ${resolution}` : `Decision sent by email to ${row.contact_email}:\n\n${resolution}`, !row.requester_user_id]);
-      await audit(client, staffUserId, 'support.resolved', row.id);
+      await audit(client, staffUserId, 'support.resolved', row.id, row.category === 'account_recovery' ? { outcome } : {});
       return {};
     });
   });
@@ -591,7 +737,7 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
     return staffChange(request, response, async (client, row, staffUserId) => {
       if (row.status !== 'resolved') return { error: 'This case is already open.' };
       if (row.appeal_reference) return { error: `A second look is already under way in ${row.appeal_reference}.` };
-      await client.query(`UPDATE support_cases SET status = 'in_review', resolution = NULL, resolved_by_user_id = NULL, resolved_at = NULL WHERE id = $1`, [row.id]);
+      await client.query(`UPDATE support_cases SET status = 'in_review', resolution = NULL, resolved_by_user_id = NULL, resolved_at = NULL, recovery_outcome = NULL WHERE id = $1`, [row.id]);
       await client.query(`INSERT INTO support_case_messages (case_id, author_type, body) VALUES ($1, 'system', 'Katondo reopened this request.')`, [row.id]);
       await audit(client, staffUserId, 'support.reopened', row.id, { reason });
       return {};

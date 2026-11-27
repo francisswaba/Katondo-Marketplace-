@@ -148,7 +148,8 @@ export function createReviewsRouter(pool: Pool, authenticate: Authenticate) {
     const limit = Math.min(Math.max(Number(request.query.limit) || 20, 1), 50);
     try {
       const shop = await pool.query(
-        `SELECT id FROM sellers WHERE id = $1 AND (verification_status = 'verified' OR seller_type = 'platform')`,
+        `SELECT id FROM sellers WHERE id = $1 AND (verification_status = 'verified' OR seller_type = 'platform')
+          AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = sellers.user_id AND u.status <> 'active')`,
         [sellerId],
       );
       if (!shop.rowCount) {

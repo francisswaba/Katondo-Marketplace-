@@ -24,13 +24,14 @@ export async function ensurePlatformUser(database: DatabaseClient, principal: Au
   }
 
   const result = await database.query(`
-    INSERT INTO users (identity_subject, email, phone)
-    VALUES ($1, $2, $3)
+    INSERT INTO users (identity_subject, email, phone, identity_object_id)
+    VALUES ($1, $2, $3, $4)
     ON CONFLICT (identity_subject) DO UPDATE SET
       email = COALESCE(EXCLUDED.email, users.email),
-      phone = COALESCE(EXCLUDED.phone, users.phone)
+      phone = COALESCE(EXCLUDED.phone, users.phone),
+      identity_object_id = COALESCE(EXCLUDED.identity_object_id, users.identity_object_id)
     RETURNING id
-  `, [principal.id, email ?? null, phone ?? null]);
+  `, [principal.id, email ?? null, phone ?? null, principal.objectId ?? null]);
   principal.platformUserId = result.rows[0].id as string;
   return principal.platformUserId;
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supportCategories, supportStatusLabels, type SupportCaseSummary } from '@katondo/contracts';
 import { useSignedInUser } from '../../lib/useSignedInUser';
 
-const startable = supportCategories.filter((category) => !category.id.startsWith('report_') && category.id !== 'privacy_request');
+const startable = supportCategories.filter((category) => !category.id.startsWith('report_') && category.id !== 'privacy_request' && category.id !== 'account_recovery');
 
 function shortDate(value: string) {
   return new Date(value).toLocaleDateString('en-ZM', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -39,8 +39,15 @@ export default function HelpHome() {
               <span>See, correct or delete the information Katondo holds about you. No account needed.</span>
             </a>
           </li>
+          <li>
+            <a href="/help/recover">
+              <strong>Can’t get into your account?</strong>
+              <span>For when you can no longer use the email on your account. No sign-in needed.</span>
+            </a>
+          </li>
         </ul>
         <p className="help-note">To report a listing, shop or review, open it and choose <strong>Report</strong>. That tells us exactly what you mean.</p>
+        <p className="help-note">Someone claiming to be from Katondo? <a href="/help/check-staff">Check their staff number</a>.</p>
       </section>
 
       <section className="help-mine" aria-labelledby="mine-heading">

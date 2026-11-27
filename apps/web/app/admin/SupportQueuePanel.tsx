@@ -7,6 +7,12 @@ type QueueCase = {
   reference: string; category: string; summary: string; status: SupportStatus; priority: SupportPriority;
   createdAt: string; firstResponseDueAt: string; resolutionDueAt: string; firstResponseAt: string | null;
   isAppeal: boolean; subjectLabel: string | null; assigneeName: string | null; assignedToMe: boolean; overdue: boolean; requester: string;
+  holdUntil: string | null; identityVerified: boolean;
+};
+type Recovery = {
+  accountEmail: string; contactPhone: string | null; holdUntil: string; holdOver: boolean;
+  identityVerifiedBy: string | null; identityVerifiedAt: string | null; identityEvidence: string | null; outcome: 'approved' | 'declined' | null;
+  account: { found: false } | { found: true; status: string; createdAt: string; isStaff: boolean; shops: string[]; orders: number };
 };
 type CaseDetail = {
   reference: string; category: string; summary: string; status: SupportStatus; priority: SupportPriority;
@@ -16,6 +22,7 @@ type CaseDetail = {
   firstResponseAt: string | null; appealOfReference: string | null; appealReference: string | null;
   messages: Array<{ id: string; author: 'requester' | 'staff' | 'system'; staffName: string | null; body: string; internal: boolean; createdAt: string }>;
   history: Array<{ event: string; details: Record<string, unknown>; actorName: string | null; createdAt: string }>;
+  recovery: Recovery | null;
 };
 
 const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
@@ -24,6 +31,7 @@ const eventLabels: Record<string, string> = {
   'support.case_opened': 'Opened', 'support.appeal_opened': 'Second look requested', 'support.replied': 'Replied to requester',
   'support.note_added': 'Internal note', 'support.assigned': 'Assigned', 'support.unassigned': 'Unassigned',
   'support.priority_changed': 'Priority changed', 'support.resolved': 'Decided', 'support.reopened': 'Reopened',
+  'support.identity_verified': 'Identity check recorded',
 };
 const categoryLabel = (id: string) => supportCategories.find((item) => item.id === id)?.label ?? id;
 const dateTime = (value: string) => new Date(value).toLocaleString('en-ZM', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -51,6 +59,8 @@ export default function SupportQueuePanel({ token, canHandle }: { token: string;
   const [priority, setPriority] = useState<SupportPriority>('normal');
   const [priorityReason, setPriorityReason] = useState('');
   const [notice, setNotice] = useState('');
+  const [evidence, setEvidence] = useState('');
+  const [outcome, setOutcome] = useState<'approved' | 'declined' | ''>('');
   const [busy, setBusy] = useState(false);
 
   const call = useCallback(async <T,>(path: string, body?: unknown): Promise<T> => {
@@ -83,7 +93,7 @@ export default function SupportQueuePanel({ token, canHandle }: { token: string;
     if (openRef === reference) { setOpenRef(null); setDetail(null); return; }
     setOpenRef(reference);
     setDetail(null);
-    setReply(''); setResolution(''); setPriorityReason(''); setInternal(false); setWaitForRequester(false);
+    setReply(''); setResolution(''); setPriorityReason(''); setInternal(false); setWaitForRequester(false); setEvidence(''); setOutcome('');
     await loadDetail(reference).catch((error: Error) => setNotice(error.message));
   }
 
@@ -137,6 +147,7 @@ export default function SupportQueuePanel({ token, canHandle }: { token: string;
               <span className="support-row-side">
                 <span>{supportStatusLabels[item.status]}</span>
                 <small className={item.overdue ? 'late-text' : undefined}>{dueLabel(item) ?? `Opened ${dateTime(item.createdAt)}`}</small>
+                {item.holdUntil && item.status !== 'resolved' && new Date(item.holdUntil).getTime() > Date.now() && <small>On hold until {dateTime(item.holdUntil)}</small>}
                 <small>{item.assigneeName ? (item.assignedToMe ? 'You' : item.assigneeName) : 'Not assigned'}</small>
               </span>
             </button>
@@ -159,6 +170,36 @@ export default function SupportQueuePanel({ token, canHandle }: { token: string;
                   {detail.appealOfReference && <div><dt>Second look at</dt><dd>{detail.appealOfReference}</dd></div>}
                   {detail.appealReference && <div><dt>Second look in</dt><dd>{detail.appealReference}</dd></div>}
                 </dl>
+
+                {detail.recovery && (
+                  <div className="recovery-box">
+                    <h4>Account recovery</h4>
+                    <dl>
+                      <div><dt>Email they can’t use</dt><dd>{detail.recovery.accountEmail}</dd></div>
+                      <div><dt>New contact email</dt><dd>{detail.requester.email}</dd></div>
+                      {detail.recovery.contactPhone && <div><dt>Phone</dt><dd>{detail.recovery.contactPhone}</dd></div>}
+                      <div><dt>Matching Katondo account</dt><dd>{detail.recovery.account.found
+                        ? `Yes: joined ${dateTime(detail.recovery.account.createdAt)}, ${detail.recovery.account.orders} order${detail.recovery.account.orders === 1 ? '' : 's'}${detail.recovery.account.shops.length ? `, shop: ${detail.recovery.account.shops.join(', ')}` : ''}${detail.recovery.account.isStaff ? '. This is a STAFF account: a top administrator must handle it.' : ''}`
+                        : 'No account uses this email. Decline unless they can show otherwise.'}</dd></div>
+                      <div><dt>Hold</dt><dd>{detail.recovery.holdOver ? 'Over: a decision can be made' : `No approval before ${dateTime(detail.recovery.holdUntil)}`}</dd></div>
+                      <div><dt>Identity check</dt><dd>{detail.recovery.identityVerifiedBy ? `Recorded by ${detail.recovery.identityVerifiedBy}` : 'Not yet recorded'}</dd></div>
+                    </dl>
+                    {detail.recovery.identityEvidence && <p className="section-copy" style={{ margin: '0 0 12px', whiteSpace: 'pre-wrap' }}><strong>How identity was checked:</strong> {detail.recovery.identityEvidence}</p>}
+                    <ol className="recovery-steps">
+                      <li>Contact them at the new email (and phone, if given). Ask things only the real owner would know: recent orders, delivery area, shop details, who they messaged. Never ask for a password or PIN.</li>
+                      <li>Record how you checked their identity below. A <strong>different</strong> staff member must then approve or decline.</li>
+                      <li>If approved: in Microsoft Entra, open the person (Users), change their sign-in email to the new address, and tell them to use <strong>Forgot password?</strong> to set a new password.</li>
+                    </ol>
+                    {canHandle && detail.status !== 'resolved' && !detail.recovery.identityVerifiedBy && (
+                      <div className="support-actions">
+                        <label>How did you check it’s really them?
+                          <textarea value={evidence} maxLength={2000} onChange={(event) => setEvidence(event.target.value)} placeholder="For example: confirmed their last order, the shop name and delivery area by phone." />
+                        </label>
+                        <div><button type="button" disabled={busy || evidence.trim().length < 20} onClick={() => act('verify-identity', { evidence }, 'Identity check recorded. A different staff member must now decide.')}>Record identity check</button></div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {!detail.requester.account && <p className="admin-notice">This person has no account. Replies here are recorded, but you must also send them by email to {detail.requester.email}. Confirm their identity before sharing or changing any data.</p>}
 
@@ -196,10 +237,17 @@ export default function SupportQueuePanel({ token, canHandle }: { token: string;
                       <label>Reason for change<input value={priorityReason} maxLength={500} onChange={(event) => setPriorityReason(event.target.value)} /></label>
                       <button type="button" disabled={busy || priority === detail.priority} onClick={() => act('priority', { priority, reason: priorityReason }, 'Priority changed.')}>Change</button>
                     </div>
+                    {detail.recovery && (
+                      <fieldset className="recovery-outcome">
+                        <legend>Recovery decision</legend>
+                        <label><input type="radio" name="outcome" checked={outcome === 'approved'} onChange={() => setOutcome('approved')} /> Approve: I’ve moved the account to the new email in Entra</label>
+                        <label><input type="radio" name="outcome" checked={outcome === 'declined'} onChange={() => setOutcome('declined')} /> Decline</label>
+                      </fieldset>
+                    )}
                     <label>Decision (shown to the requester)
                       <textarea value={resolution} maxLength={2000} onChange={(event) => setResolution(event.target.value)} placeholder="What you decided, and why. If they disagree, they can ask for a second look." />
                     </label>
-                    <div><button type="button" className="resolve-button" disabled={busy || resolution.trim().length < 10} onClick={() => act('resolve', { resolution }, 'Case resolved.')}>Resolve with this decision</button></div>
+                    <div><button type="button" className="resolve-button" disabled={busy || resolution.trim().length < 10 || Boolean(detail.recovery && !outcome)} onClick={() => act('resolve', { resolution, ...(detail.recovery ? { outcome } : {}) }, 'Case resolved.')}>Resolve with this decision</button></div>
                   </div>
                 )}
                 {canHandle && detail.status === 'resolved' && !detail.appealReference && (

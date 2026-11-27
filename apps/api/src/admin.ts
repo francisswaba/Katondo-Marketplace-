@@ -48,7 +48,7 @@ export function createAdministrationRouter(pool: Pool, authenticate: Authenticat
           last_sign_in_at = NOW(),
           updated_at = NOW()
       `, [userId, request.user!.displayName || request.user!.email || 'Katondo staff member', staffRoleList]);
-      const staff = await pool.query('SELECT display_name, job_title, status, last_sign_in_at FROM staff_members WHERE user_id = $1', [userId]);
+      const staff = await pool.query('SELECT display_name, job_title, department, staff_number, status, last_sign_in_at FROM staff_members WHERE user_id = $1', [userId]);
       if (staff.rows[0]?.status !== 'active') {
         response.status(403).json({ error: 'This staff account is not active.' });
         return;
@@ -77,7 +77,7 @@ export function createAdministrationRouter(pool: Pool, authenticate: Authenticat
   router.get('/api/admin/staff', authenticate, requireAnyRole(['super_administrator', 'auditor']), async (_request, response) => {
     try {
       const result = await pool.query(`
-        SELECT sm.user_id, sm.display_name, sm.job_title, sm.roles, sm.status,
+        SELECT sm.user_id, sm.display_name, sm.staff_number, sm.job_title, sm.department, sm.roles, sm.status,
                sm.last_sign_in_at, sm.created_at, u.email, u.phone
         FROM staff_members sm JOIN users u ON u.id = sm.user_id
         ORDER BY sm.status, sm.display_name
@@ -86,6 +86,37 @@ export function createAdministrationRouter(pool: Pool, authenticate: Authenticat
     } catch (error) {
       console.error('Staff directory request failed', error);
       response.status(503).json({ error: 'The staff directory is temporarily unavailable.' });
+    }
+  });
+
+  // Job title and department, shown with the staff number on the public staff check.
+  router.patch('/api/admin/staff/:userId/profile', authenticate, requireAnyRole(['super_administrator']), async (request: AuthenticatedRequest, response) => {
+    const userId = Array.isArray(request.params.userId) ? request.params.userId[0] : request.params.userId;
+    const clean = (value: unknown) => typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, '').trim() : '';
+    const jobTitle = clean(request.body?.jobTitle);
+    const department = clean(request.body?.department);
+    if (jobTitle.length > 80 || department.length > 80) {
+      response.status(400).json({ error: 'Keep job title and department to 80 characters each.' });
+      return;
+    }
+    try {
+      const actorUserId = await ensurePlatformUser(pool, request.user!);
+      const result = await pool.query(`
+        UPDATE staff_members SET job_title = $2, department = $3, updated_at = NOW()
+        WHERE user_id = $1 RETURNING user_id, staff_number, job_title, department
+      `, [userId, jobTitle || null, department || null]);
+      if (!result.rowCount) {
+        response.status(404).json({ error: 'Staff member not found.' });
+        return;
+      }
+      await pool.query(`
+        INSERT INTO audit_events (actor_user_id, event_type, subject_type, subject_id, details)
+        VALUES ($1, 'staff.profile_changed', 'user', $2, $3)
+      `, [actorUserId, userId, { jobTitle: jobTitle || null, department: department || null }]);
+      response.json({ staff: result.rows[0] });
+    } catch (error) {
+      console.error('Staff profile update failed', error);
+      response.status(503).json({ error: 'The staff profile could not be saved.' });
     }
   });
 

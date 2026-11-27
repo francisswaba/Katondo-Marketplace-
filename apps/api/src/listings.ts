@@ -187,6 +187,7 @@ export function createListingsRouter(pool: Pool, authenticate: Authenticate) {
         SELECT id, display_name, seller_type, verification_status, storefront_layout, storefront_tagline
         FROM sellers
         WHERE id = $1 AND (verification_status = 'verified' OR seller_type = 'platform')
+          AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = sellers.user_id AND u.status <> 'active')
       `, [sellerId]);
       if (!seller.rows[0]) {
         response.status(404).json({ error: 'Shop not found.' });

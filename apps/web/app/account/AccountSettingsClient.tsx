@@ -5,7 +5,7 @@ import BrandMark from '../../components/BrandMark';
 import ThemeToggle, { setTheme } from '../../components/ThemeToggle';
 import { FormEvent, useEffect, useState } from 'react';
 import type { User } from 'oidc-client-ts';
-import type { MarketConfiguration } from '@katondo/contracts';
+import { accountRestoreDays, type MarketConfiguration } from '@katondo/contracts';
 import { authProvider, getUserManager, isCurrentUser, isOidcConfigured } from '../../lib/oidc';
 
 type Preferences = {
@@ -21,7 +21,7 @@ type Preferences = {
 };
 
 type AccountPayload = {
-  account: { displayName?: string; email?: string; phone?: string; roles: string[] };
+  account: { displayName?: string; email?: string; phone?: string; roles: string[]; status?: 'active' | 'pending_deletion'; deletionDueAt?: string | null };
   market: MarketConfiguration;
   preferences: Preferences;
 };
@@ -53,6 +53,9 @@ export default function AccountSettingsClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [closeText, setCloseText] = useState('');
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     const manager = getUserManager();
@@ -78,7 +81,28 @@ export default function AccountSettingsClient() {
       })
       .catch((error: Error) => setMessage(error.message))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, reloadKey]);
+
+  async function accountAction(path: 'close' | 'restore') {
+    if (!user?.access_token) return;
+    setClosing(true);
+    setMessage('');
+    try {
+      const response = await fetch(`${apiUrl}/api/account/${path}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${user.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(path === 'close' ? { confirm: closeText.trim().toUpperCase() } : {}),
+      });
+      if (!response.ok) throw new Error(await readError(response));
+      setCloseText('');
+      setMessage(path === 'close' ? '' : 'Welcome back. Your account and listings are restored.');
+      setReloadKey((key) => key + 1);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'That didn’t work. Try again.');
+    } finally {
+      setClosing(false);
+    }
+  }
 
   async function signIn() {
     setMessage('');
@@ -127,6 +151,15 @@ export default function AccountSettingsClient() {
       <header className="admin-topbar"><div><Link className="wordmark" href="/"><BrandMark />katondo</Link><span className="admin-badge">Account</span></div><div className="admin-user"><span>{data.account.displayName || data.account.email || 'Katondo member'}</span><button className="text-button" type="button" onClick={signOut}>Sign out</button><ThemeToggle /></div></header>
       <section className="account-heading"><p className="eyebrow">Account settings</p><h1>Make Katondo work for you.</h1><p>Security details stay with the approved sign-in provider. Marketplace preferences are stored by Katondo.</p></section>
       {message && <p className="admin-flash">{message}</p>}
+      {data.account.status === 'pending_deletion' && (
+        <section className="closing-banner" role="status">
+          <div>
+            <h2>Your account is closing</h2>
+            <p>Your profile, shop and listings are hidden. On {data.account.deletionDueAt ? new Date(data.account.deletionDueAt).toLocaleDateString('en-ZM', { day: 'numeric', month: 'long', year: 'numeric' }) : 'the closing date'} Katondo permanently removes your details. Until then you can change your mind.</p>
+          </div>
+          <button className="primary-button button-reset" type="button" disabled={closing} onClick={() => accountAction('restore')}>{closing ? 'Restoring…' : 'Restore my account'}</button>
+        </section>
+      )}
       <section className="account-grid">
         <article className="account-card"><p className="eyebrow">Sign-in and security</p><h2>Password and account security</h2>{authProvider === 'entra'
           ? <><p>Katondo never sees your password. To change it, sign out, choose <strong>Sign in</strong>, then <strong>Forgot password?</strong> on the sign-in page. If you signed up with Google or Facebook, manage your password with them.</p><button className="primary-button" type="button" onClick={signOut}>Sign out to change password</button></>
@@ -145,6 +178,17 @@ export default function AccountSettingsClient() {
         </div>
         <button className="primary-button button-reset" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</button>
       </form>
+      {data.account.status !== 'pending_deletion' && !preferences.available.staff && (
+        <section className="account-close">
+          <h2>Close your account</h2>
+          <p>Your profile, shop and listings are hidden straight away. You have {accountRestoreDays} days to change your mind: sign in and choose <strong>Restore my account</strong>. After that, Katondo permanently removes your name, contact details and messages. Records the law requires us to keep, such as completed orders and payments, are kept without your contact details.</p>
+          <p>Finish or cancel any open orders first.</p>
+          <label><span>Type <strong>CLOSE</strong> to confirm</span>
+            <input value={closeText} onChange={(event) => setCloseText(event.target.value)} autoComplete="off" />
+          </label>
+          <button className="danger-button" type="button" disabled={closing || closeText.trim().toUpperCase() !== 'CLOSE'} onClick={() => accountAction('close')}>{closing ? 'Closing…' : 'Close my account'}</button>
+        </section>
+      )}
       <footer><Link className="wordmark" href="/"><BrandMark />katondo</Link><p>Your account. Your choices.</p><span><Link className="staff-link" href="/">Marketplace</Link>{preferences.available.staff && <>&nbsp; · &nbsp;<Link className="staff-link" href="/admin">Staff workspace</Link></>}</span></footer>
     </main>
   );

@@ -29,6 +29,10 @@ export type AuthenticatedPrincipal = {
   phone?: string;
   emailVerified: boolean;
   phoneVerified: boolean;
+  /** The sign-in provider's object ID for this person (Entra `oid`), used to find them in the provider. */
+  objectId?: string;
+  accountStatus?: 'active' | 'pending_deletion' | 'deleted';
+  deletionDueAt?: string | null;
 };
 
 export type AuthenticatedRequest = Request & { user?: AuthenticatedPrincipal };

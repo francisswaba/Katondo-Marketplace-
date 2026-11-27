@@ -40,6 +40,8 @@ Information may be shared only as necessary with authorized Katondo staff and co
 
 ## 6. Retention and security
 
+Draft position to confirm with counsel: when someone closes their account, it is hidden at once and can be restored for 30 days. After that Katondo removes their name, email, phone, preferences, blocks and the text of messages they sent, renames any shop to "Closed shop" and removes its listings. Completed orders, payments, payouts, seller verification records and help cases are kept, without contact details, for the periods the law requires. Staff then delete the person's sign-in account at the sign-in provider. Lost-email recovery requests wait at least 72 hours and need an identity check recorded by one staff member and approval by a different one.
+
 The final notice must state approved retention periods or criteria for each category, including rejected applications, audit/security logs, backups, tax/order records, legal holds and deletion requests. Katondo will apply access controls and security safeguards appropriate to the risks and will maintain incident-handling procedures; do not promise a control until it is implemented and tested.
 
 ## 7. Your rights and choices
