@@ -12,6 +12,7 @@ import {
 import { requireAnyRole, type AuthenticatedRequest } from './access.js';
 import { recordActivity } from './activity.js';
 import { ensurePlatformUser, findPlatformUserId } from './identity.js';
+import { queueEmail } from './email.js';
 import { getMarketConfiguration } from './market.js';
 import { cleanReviewText, reviewsEnabled } from './reviews.js';
 import { supportEnabled } from './support.js';
@@ -122,6 +123,27 @@ export function createMessagingRouter(pool: Pool, authenticate: Authenticate) {
     return { id: inserted.rows[0].id as string, flags };
   }
 
+  /** Emails the other person (at most once per conversation every 30 minutes; never includes the message text). */
+  async function notifyNewMessage(conversationId: string, senderRole: ConversationRole) {
+    const result = await pool.query(`
+      SELECT c.listing_title, c.buyer_display_name, s.display_name AS seller_name,
+        CASE WHEN $2 = 'buyer' THEN s.user_id ELSE c.buyer_user_id END AS recipient_id
+      FROM conversations c JOIN sellers s ON s.id = c.seller_id WHERE c.id = $1
+    `, [conversationId, senderRole]).catch(() => null);
+    const row = result?.rows[0];
+    if (!row) return;
+    const recipient = await pool.query(`SELECT email FROM users WHERE id = $1 AND status = 'active'`, [row.recipient_id]).catch(() => null);
+    await queueEmail(pool, {
+      to: recipient?.rows[0]?.email, userId: row.recipient_id, template: 'new_message', preference: 'message_emails',
+      params: {
+        name: senderRole === 'buyer' ? row.seller_name : row.buyer_display_name,
+        senderName: senderRole === 'buyer' ? row.buyer_display_name : row.seller_name,
+        listingTitle: row.listing_title, conversationId,
+      },
+      dedupe: { key: `message:${conversationId}:${row.recipient_id}`, minutes: 30 },
+    });
+  }
+
   function validBody(value: unknown) {
     const body = cleanMessage(value);
     if (!body) return { error: 'Write a message first.' };
@@ -198,6 +220,7 @@ export function createMessagingRouter(pool: Pool, authenticate: Authenticate) {
       await client.query('COMMIT');
       // Never record message content in the activity ledger.
       await recordActivity(pool, request, 'buyer', 'buyer.message_sent', { subjectType: 'conversation', subjectId: conversationId, metadata: { flags: message.flags } });
+      void notifyNewMessage(conversationId, 'buyer');
       response.status(201).json({ conversationId, message: { id: message.id } });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => undefined);
@@ -371,6 +394,7 @@ export function createMessagingRouter(pool: Pool, authenticate: Authenticate) {
       await recordActivity(pool, request, found.role === 'buyer' ? 'buyer' : 'seller', `${found.role}.message_sent`, {
         subjectType: 'conversation', subjectId: conversationId, metadata: { flags: message.flags },
       });
+      void notifyNewMessage(conversationId, found.role);
       response.status(201).json({ message: { id: message.id } });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => undefined);

@@ -17,7 +17,7 @@ type Recovery = {
 type CaseDetail = {
   reference: string; category: string; summary: string; status: SupportStatus; priority: SupportPriority;
   subjectType: string | null; subjectId: string | null; subjectLabel: string | null; reportReason: string | null; privacyRequestType: string | null;
-  requester: { account: boolean; email: string | null; name?: string | null };
+  requester: { account: boolean; email: string | null; name?: string | null; emailed?: boolean };
   assigneeName: string | null; resolution: string | null; createdAt: string; firstResponseDueAt: string; resolutionDueAt: string;
   firstResponseAt: string | null; appealOfReference: string | null; appealReference: string | null;
   messages: Array<{ id: string; author: 'requester' | 'staff' | 'system'; staffName: string | null; body: string; internal: boolean; createdAt: string }>;
@@ -201,7 +201,7 @@ export default function SupportQueuePanel({ token, canHandle }: { token: string;
                   </div>
                 )}
 
-                {!detail.requester.account && <p className="admin-notice">This person has no account. Replies here are recorded, but you must also send them by email to {detail.requester.email}. Confirm their identity before sharing or changing any data.</p>}
+                {!detail.requester.account && <p className="admin-notice">This person has no account. {detail.requester.emailed ? <>Your replies and decision are emailed to {detail.requester.email} automatically.</> : <>Replies here are recorded, but you must also send them by email to {detail.requester.email}.</>} Confirm their identity before sharing or changing any data.</p>}
 
                 <ol className="staff-thread">
                   {detail.messages.map((message) => (

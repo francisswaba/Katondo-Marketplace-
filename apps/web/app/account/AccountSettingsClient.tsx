@@ -17,6 +17,7 @@ type Preferences = {
   savedSearchAlerts: boolean;
   sellerActivityAlerts: boolean;
   staffOperationalAlerts: boolean;
+  messageEmails?: boolean;
   available: { buyer: boolean; seller: boolean; staff: boolean };
 };
 
@@ -171,6 +172,7 @@ export default function AccountSettingsClient() {
         <div className="preference-selects"><label>Language and region<select value={preferences.locale} onChange={(event) => updatePreference('locale', event.target.value)}>{data.market.supportedLocales.map((locale) => <option value={locale} key={locale}>{localeLabel(locale)}</option>)}</select></label><label>Appearance<select value={preferences.theme} onChange={(event) => updatePreference('theme', event.target.value as Preferences['theme'])}><option value="system">Use device setting</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
         <div className="preference-list">
           <PreferenceRow label="Marketplace updates" detail="Important product and service announcements." checked={preferences.marketplaceUpdates} onChange={(value) => updatePreference('marketplaceUpdates', value)} />
+          <PreferenceRow label="Message emails" detail="An email when someone messages you. At most one per conversation every 30 minutes." checked={preferences.messageEmails !== false} onChange={(value) => updatePreference('messageEmails', value)} />
           <PreferenceRow label="Offers and discovery" detail="Optional promotions, recommendations and marketplace news." checked={preferences.marketingEmails} onChange={(value) => updatePreference('marketingEmails', value)} />
           {preferences.available.buyer && <><PreferenceRow label="Order updates" detail="Purchase, delivery, return and dispute updates." checked={preferences.orderUpdates} onChange={(value) => updatePreference('orderUpdates', value)} /><PreferenceRow label="Saved-search alerts" detail="Notifications when matching items become available." checked={preferences.savedSearchAlerts} onChange={(value) => updatePreference('savedSearchAlerts', value)} /></>}
           {preferences.available.seller && <PreferenceRow label="Seller activity" detail="Listing, order, payout and storefront notifications." checked={preferences.sellerActivityAlerts} onChange={(value) => updatePreference('sellerActivityAlerts', value)} />}

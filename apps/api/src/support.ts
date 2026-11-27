@@ -21,6 +21,7 @@ import { requireAnyRole, type AuthenticatedRequest } from './access.js';
 import { recordActivity } from './activity.js';
 import { ensurePlatformUser, findPlatformUserId } from './identity.js';
 import { cleanReviewText } from './reviews.js';
+import { emailEnabled, queueEmail } from './email.js';
 
 type Authenticate = (request: AuthenticatedRequest, response: Response, next: NextFunction) => Promise<void>;
 
@@ -272,6 +273,7 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
         requesterUserId: null, contactName: name, contactEmail: email, privacyRequestType: type, priority: 'high',
       });
       await client.query('COMMIT');
+      void queueEmail(pool, { to: email, template: 'support_received_anonymous', params: { reference: created.reference, name, days: privacyResponseDays() } });
       response.status(201).json({ reference: created.reference });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => undefined);
@@ -314,6 +316,13 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
         [caseId, `${details}${shopName ? `\n\nShop name: ${shopName}` : ''}`]);
       await audit(client, null, 'support.case_opened', caseId, { category: 'account_recovery', priority: 'high' });
       await client.query('COMMIT');
+      void queueEmail(pool, { to: contactEmail, template: 'recovery_received', params: { reference, name, holdHours: recoveryHoldHours() } });
+      // Warn the address on the account, so the real owner can object during the hold. Only if such an account exists.
+      void pool.query(`SELECT id FROM users WHERE lower(email) = $1 AND status = 'active'`, [accountEmail]).then(async (owner) => {
+        if (!owner.rows[0]) return;
+        const hold = await pool.query(`SELECT hold_until FROM support_cases WHERE id = $1`, [caseId]);
+        await queueEmail(pool, { to: accountEmail, userId: owner.rows[0].id, template: 'recovery_alert_old_email', params: { reference, holdUntil: hold.rows[0]?.hold_until?.toISOString?.() ?? null } });
+      }).catch(() => undefined);
       response.status(201).json({ reference, holdHours: recoveryHoldHours() });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => undefined);
@@ -555,8 +564,8 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
         subjectType: row.subject_type, subjectId: row.subject_id, subjectLabel: row.subject_label,
         reportReason: row.report_reason, privacyRequestType: row.privacy_request_type,
         requester: row.requester_user_id
-          ? { account: true, email: row.requester_email ?? null }
-          : { account: false, name: row.contact_name, email: row.contact_email },
+          ? { account: true, email: row.requester_email ?? null, emailed: emailEnabled() }
+          : { account: false, name: row.contact_name, email: row.contact_email, emailed: emailEnabled() },
         assigneeName: row.assignee_name, resolution: row.resolution, resolvedAt: iso(row.resolved_at),
         createdAt: iso(row.created_at), firstResponseDueAt: iso(row.first_response_due_at), resolutionDueAt: iso(row.resolution_due_at),
         firstResponseAt: iso(row.first_response_at), appealOfReference: row.appeal_of_reference, appealReference: row.appeal_reference,
@@ -606,7 +615,7 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
   /** Runs a staff change on an open case inside a transaction, after the conflict checks. */
   async function staffChange(
     request: AuthenticatedRequest, response: Response,
-    change: (client: PoolClient, row: Record<string, any>, staffUserId: string) => Promise<{ status?: number; error?: string; body?: unknown }>,
+    change: (client: PoolClient, row: Record<string, any>, staffUserId: string) => Promise<{ status?: number; error?: string; body?: unknown; after?: () => Promise<unknown> }>,
   ) {
     const client = await pool.connect();
     try {
@@ -624,6 +633,7 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
       await client.query(`UPDATE support_cases SET updated_at = NOW() WHERE id = $1`, [row.id]);
       await client.query('COMMIT');
       response.json(result.body ?? { ok: true });
+      if (result.after) void result.after().catch(() => undefined);
     } catch (error) {
       await client.query('ROLLBACK').catch(() => undefined);
       console.error('Support staff change failed', error);
@@ -656,7 +666,16 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
           [row.id, waitForRequester ? 'waiting_on_requester' : 'in_review', staffUserId]);
       }
       await audit(client, staffUserId, internal ? 'support.note_added' : 'support.replied', row.id, internal ? {} : { waitingOnRequester: waitForRequester });
-      return {};
+      if (internal) return {};
+      return { after: async () => {
+        const staff = await pool.query(`SELECT display_name, staff_number FROM staff_members WHERE user_id = $1`, [staffUserId]);
+        const label = staff.rows[0] ? `${staffLabel(staff.rows[0].display_name, staff.rows[0].staff_number)} from Katondo` : 'Katondo';
+        if (row.requester_user_id) {
+          await queueEmail(pool, { to: row.requester_email, userId: row.requester_user_id, template: 'support_reply', params: { reference: row.reference, summary: row.summary, staffLabel: label } });
+        } else {
+          await queueEmail(pool, { to: row.contact_email, template: 'support_reply_anonymous', params: { reference: row.reference, name: row.contact_name, staffLabel: label, body } });
+        }
+      } };
     });
   });
 
@@ -728,7 +747,9 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
       await client.query(`INSERT INTO support_case_messages (case_id, author_type, author_user_id, body, internal) VALUES ($1, 'staff', $2, $3, $4)`,
         [row.id, staffUserId, row.requester_user_id ? `Decision: ${resolution}` : `Decision sent by email to ${row.contact_email}:\n\n${resolution}`, !row.requester_user_id]);
       await audit(client, staffUserId, 'support.resolved', row.id, row.category === 'account_recovery' ? { outcome } : {});
-      return {};
+      return { after: () => row.requester_user_id
+        ? queueEmail(pool, { to: row.requester_email, userId: row.requester_user_id, template: 'support_resolved', params: { reference: row.reference, summary: row.summary } })
+        : queueEmail(pool, { to: row.contact_email, template: 'support_resolved_anonymous', params: { reference: row.reference, name: row.contact_name, body: resolution } }) };
     });
   });
 

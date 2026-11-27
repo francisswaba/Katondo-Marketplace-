@@ -45,6 +45,12 @@ This repository now has a deployment path for the web storefront on Netlify and 
 | `REVIEWS_ENABLED` | `false` until checkout creates real orders; then `true` |
 | `MESSAGING_ENABLED` | `false` until sign-in is live; then `true` |
 | `SUPPORT_ENABLED` | `false` until sign-in is live and complaint handling is staffed; then `true` |
+| `EMAIL_ENABLED` | `true` to send email notifications (off by default) |
+| `EMAIL_PROVIDER` | `acs` (Azure Communication Services). `log` only for local testing; it is refused in production |
+| `ACS_CONNECTION_STRING` | **Secret.** From the Azure Communication Services resource → Keys. Paste it into Railway yourself |
+| `EMAIL_FROM` | Sender address from the connected email domain, e.g. `DoNotReply@<domain>` |
+| `EMAIL_REPLY_TO` | Where replies go, e.g. the support inbox (optional) |
+| `PUBLIC_WEB_URL` | Website address used in email links, e.g. `https://katondo.netlify.app` |
 | `ACCOUNT_RECOVERY_HOLD_HOURS` | Hours a lost-email recovery waits before staff may approve it (default `72`) |
 | `PRIVACY_REQUEST_RESPONSE_DAYS` | Days to answer a personal-data request (default `30`; confirm the legal deadline with counsel) |
 | `SELLER_DATA_PROCESSING_APPROVED` | `true` only after the data-processing release gate passes |
@@ -139,4 +145,12 @@ Tenant `c43c8626-8450-43f8-9448-f6480da89b89` (external tenant "katondo", billed
 **Lost email** (`/help/recover`, no sign-in): creates an `account_recovery` help case. Staff see the matching Katondo account, the hold (no approval for `ACCOUNT_RECOVERY_HOLD_HOURS`, default 72) and step-by-step guidance. One staff member records how they checked identity; a different staff member must approve or decline (enforced in the API and the database). After approving, staff change the person's sign-in email in Entra (Users → the person → edit), and the person sets a new password with **Forgot password?**. Recovery of a staff account must be handled by a top administrator. Email notifications don't exist yet, so staff contact the person by email themselves.
 
 **Staff numbers**: every staff record gets a random number with a check character, such as `S-7QM4-R9K` (no 0, 1, I, L, O or U; a mistyped character is caught before lookup), shown with their first name on replies to customers ("Mwila, S-7QM4-R9K, Katondo") and in case histories. Top administrators set job title and department in the staff directory. Anyone can check a number at `/help/check-staff`; only first name and job title of active staff are shown. Recommended: copy each staff number into the Entra user's **Employee ID** field so the two match.
+
+## Email notifications
+
+Code: `apps/api/src/email.ts`, migration `015_email_outbox.sql`. Emails are queued in `email_outbox` and sent every 20 seconds by the API through Azure Communication Services, with retries (after 1, 5, 15, 60 and 180 minutes, then marked failed). Open tracking is switched off. Sent rows are deleted after 30 days, failed ones after 90; a closed account's rows are deleted when it is anonymised. Nothing is queued while `EMAIL_ENABLED` is off.
+
+Emails sent: help-request replies and decisions (people without an account get the full text, signed-in people get a link); confirmation of personal-data and account-recovery requests; a warning to the old address on an account when someone asks to recover it; new messages (no message text, at most one per conversation every 30 minutes, can be switched off under Account settings → Message emails); account closing and restored; seller application received and declined.
+
+Setup in Azure (PMCS subscription): create an **Email Communication Services** resource and add a domain (the free Azure-managed domain for testing; your own domain with its DNS records for launch), create a **Communication Services** resource and connect the domain to it, then copy its connection string into Railway as `ACS_CONNECTION_STRING`.
 

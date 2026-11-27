@@ -6,6 +6,7 @@ import { ensurePlatformUser } from './identity.js';
 import { getMarketConfiguration } from './market.js';
 import { accountRestoreDays } from '@katondo/contracts';
 import { createSystemSupportCase } from './support.js';
+import { queueEmail } from './email.js';
 
 type Authenticate = (request: AuthenticatedRequest, response: Response, next: NextFunction) => Promise<void>;
 
@@ -27,6 +28,7 @@ function preferenceResponse(row: Record<string, unknown>, roles: string[]) {
     savedSearchAlerts: row.saved_search_alerts === true,
     sellerActivityAlerts: row.seller_activity_alerts === true,
     staffOperationalAlerts: row.staff_operational_alerts === true,
+    messageEmails: row.message_emails !== false,
     available: {
       buyer: roles.includes('buyer'),
       seller: isSeller(roles),
@@ -114,8 +116,12 @@ export function createAccountRouter(pool: Pool, authenticate: Authenticate) {
         staff ? request.body.staffOperationalAlerts : true,
         buyer, seller, staff,
       ]);
+      let saved = result.rows[0];
+      if (typeof request.body?.messageEmails === 'boolean') {
+        saved = (await pool.query(`UPDATE user_preferences SET message_emails = $2 WHERE user_id = $1 RETURNING *`, [userId, request.body.messageEmails])).rows[0];
+      }
       await recordActivity(pool, request, request.user!.actorType === 'staff' ? 'staff' : request.user!.actorType, 'account.preferences_updated');
-      response.json({ preferences: preferenceResponse(result.rows[0], roles) });
+      response.json({ preferences: preferenceResponse(saved, roles) });
     } catch (error) {
       console.error('Account settings update failed', error);
       response.status(503).json({ error: 'Account settings could not be saved.' });
@@ -156,6 +162,10 @@ export function createAccountRouter(pool: Pool, authenticate: Authenticate) {
       await client.query(`INSERT INTO audit_events (actor_user_id, event_type, subject_type, subject_id, details) VALUES ($1, 'account.closing_requested', 'user', $1, '{}')`, [userId]);
       await client.query('COMMIT');
       response.json({ status: 'pending_deletion', deletionDueAt: (updated.rows[0].deletion_due_at as Date).toISOString() });
+      void pool.query(`SELECT email FROM users WHERE id = $1`, [userId]).then((user) => queueEmail(pool, {
+        to: user.rows[0]?.email, userId, template: 'account_closing',
+        params: { name: request.user?.displayName ?? null, dueAt: (updated.rows[0].deletion_due_at as Date).toISOString() },
+      })).catch(() => undefined);
     } catch (error) {
       await client.query('ROLLBACK').catch(() => undefined);
       console.error('Account closing failed', error);
@@ -218,6 +228,9 @@ export function createAccountRouter(pool: Pool, authenticate: Authenticate) {
       await client.query(`INSERT INTO audit_events (actor_user_id, event_type, subject_type, subject_id, details) VALUES ($1, 'account.restored', 'user', $1, '{}')`, [userId]);
       await client.query('COMMIT');
       response.json({ status: 'active' });
+      void pool.query(`SELECT email FROM users WHERE id = $1`, [userId]).then((user) => queueEmail(pool, {
+        to: user.rows[0]?.email, userId, template: 'account_restored', params: { name: request.user?.displayName ?? null },
+      })).catch(() => undefined);
     } catch (error) {
       await client.query('ROLLBACK').catch(() => undefined);
       console.error('Account restore failed', error);
@@ -254,6 +267,7 @@ export async function purgeClosedAccounts(pool: Pool) {
       await client.query(`UPDATE support_cases SET contact_name = NULL, contact_email = NULL, contact_phone = NULL WHERE requester_user_id = $1`, [row.id]);
       // Seller verification records (legal name, NRC, PACRA number) are kept; the contact phone is not.
       await client.query(`UPDATE seller_applications SET contact_phone = NULL WHERE seller_id IN (SELECT id FROM sellers WHERE user_id = $1)`, [row.id]);
+      await client.query(`DELETE FROM email_outbox WHERE user_id = $1`, [row.id]);
       await client.query(`
         UPDATE users SET email = NULL, phone = NULL, status = 'deleted', deleted_at = NOW(),
           identity_subject = 'closed:' || id::text, deletion_due_at = NULL

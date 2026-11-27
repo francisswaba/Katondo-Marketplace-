@@ -14,6 +14,7 @@ import {
 } from './access.js';
 import { createAdministrationRouter } from './admin.js';
 import { createAccountRouter, purgeClosedAccounts } from './account.js';
+import { queueEmail, startEmailWorker } from './email.js';
 import { createListingsRouter, listingColumns, mapListingRow } from './listings.js';
 import { productTypeIds } from '@katondo/contracts';
 import { recordActivity, scheduleActivityRetention } from './activity.js';
@@ -449,6 +450,7 @@ app.post('/api/seller/onboarding', authenticate, async (request: AuthenticatedRe
     `, [userId, sellerId]);
     await client.query('COMMIT');
     await recordActivity(pool, request, 'seller', 'seller.application_submitted', { subjectType: 'seller', subjectId: sellerId });
+    void queueEmail(pool, { to: request.user!.emailVerified ? email : null, userId, template: 'seller_application_received', params: { name: legalName, shopName: displayName } });
     response.status(201).json({ application: { ...seller.rows[0], city, countryCode: market.countryCode, acceptedAt: new Date().toISOString() } });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -536,6 +538,15 @@ app.post('/api/admin/seller-applications/:sellerId/review', authenticate, requir
     await recordActivity(pool, request, 'staff', 'staff.seller_application_reviewed', {
       subjectType: 'seller', subjectId: sellerId, metadata: { status },
     });
+    if (status === 'rejected') {
+      void pool.query(`
+        SELECT u.id, u.email, s.display_name, a.legal_name FROM sellers s
+        JOIN users u ON u.id = s.user_id JOIN seller_applications a ON a.seller_id = s.id WHERE s.id = $1
+      `, [sellerId]).then((found) => found.rows[0] && queueEmail(pool, {
+        to: found.rows[0].email, userId: found.rows[0].id, template: 'seller_application_rejected',
+        params: { name: found.rows[0].legal_name, shopName: found.rows[0].display_name, reason },
+      })).catch(() => undefined);
+    }
     response.json({ application: updated.rows[0] });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -578,6 +589,7 @@ app.use(createMessagingRouter(pool, authenticate));
 app.use(createSupportRouter(pool, authenticate));
 
 scheduleActivityRetention(pool);
+startEmailWorker(pool);
 
 // Anonymise accounts whose 30-day restore period has ended: shortly after start, then every 6 hours.
 const runAccountPurge = () => purgeClosedAccounts(pool).then((count) => {

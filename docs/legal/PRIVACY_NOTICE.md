@@ -24,6 +24,8 @@ You must be **18 or over** to create a Katondo account. We don't knowingly colle
 
 **Messages.** We check messages automatically for phone numbers, email addresses, links and requests to pay outside Katondo, and show a safety warning when we find them. Katondo staff read a conversation only if someone reports it, and every time they do, it is recorded.
 
+**Emails we send you.** Account, help-request and security emails always go to you. Message emails are on unless you switch them off in your account settings. We don’t track whether you open our emails. We keep a record of each email for 30 days.
+
 **Optional activity.** Only if you turn it on in your account settings: which pages and features you use, so we can improve Katondo. This is kept for 30 days. We never store your full IP address; we keep a scrambled version that can't be turned back into the address.
 
 **Security records.** Sign-ins, staff actions and changes to accounts, so we can investigate misuse and protect your account.
@@ -44,7 +46,7 @@ We rely on your consent, which you give when you create your account and accept 
 ## Who we share it with
 
 - **Other users**, only as needed: buyers see a seller's shop name and listings; the person you message sees your name and messages; reviews show the reviewer's first name. Buyer ratings are never public.
-- **Service providers who run Katondo for us**: Microsoft (sign-in), Railway (our servers and database), Netlify (our website), and Google or Facebook if you choose to sign in with them. When we add payment, delivery or email providers, we will name them here.
+- **Service providers who run Katondo for us**: Microsoft (sign-in, and sending our emails through Azure Communication Services), Railway (our servers and database), Netlify (our website), and Google or Facebook if you choose to sign in with them. When we add payment or delivery providers, we will name them here.
 - **Payment providers**, when you pay through Katondo. They process your payment details; Katondo doesn't store card numbers or mobile-money PINs.
 - **Authorities**, when the law requires it, or to protect people from fraud or harm.
 
