@@ -184,7 +184,7 @@ function compose(template: EmailTemplate, params: Params): Rendered {
 const footerText = (optional?: boolean) => [
   'Katondo staff will never ask for your password, PIN or card number.',
   optional ? `Choose which emails you get: ${webUrl()}/account` : '',
-  'Katondo.zm Marketplace, No. 8 Elm Road, Woodlands, Lusaka, Zambia.',
+  'Katondo.zm Marketplace, Lusaka, Zambia.',
 ].filter(Boolean).join('\n');
 
 export function renderEmail(template: EmailTemplate, params: Params) {
