@@ -59,6 +59,8 @@ export function createAccountRouter(pool: Pool, authenticate: Authenticate) {
           roles: request.user?.roles ?? [],
           status: request.user?.accountStatus ?? 'active',
           deletionDueAt: request.user?.deletionDueAt ?? null,
+          policiesRequired: request.user?.policiesRequired ?? false,
+          policyVersion: process.env.PRIVACY_NOTICE_VERSION ?? null,
         },
         market,
         preferences: preferenceResponse(result.rows[0], request.user?.roles ?? []),
@@ -163,6 +165,38 @@ export function createAccountRouter(pool: Pool, authenticate: Authenticate) {
     }
   });
 
+  // The person confirms they are 18 or over and accepts the current privacy notice and terms.
+  router.post('/api/account/accept-policies', authenticate, async (request: AuthenticatedRequest, response) => {
+    const version = process.env.PRIVACY_NOTICE_VERSION;
+    if (request.user?.actorType === 'ai_agent') return void response.status(403).json({ error: 'Service agents don’t accept policies.' });
+    if (!version) return void response.status(503).json({ error: 'Katondo’s privacy notice isn’t published yet.' });
+    if (request.body?.confirmAdult !== true || request.body?.acceptPolicies !== true) {
+      return void response.status(400).json({ error: 'You must be 18 or over and accept the privacy notice and terms to use Katondo.' });
+    }
+    if (request.body?.version !== version) {
+      return void response.status(409).json({ error: 'The privacy notice or terms have just been updated. Reload the page to read the new version.' });
+    }
+    const client = await pool.connect();
+    try {
+      const userId = await ensurePlatformUser(client, request.user!);
+      await client.query('BEGIN');
+      await client.query(`
+        UPDATE users SET adult_confirmed_at = COALESCE(adult_confirmed_at, NOW()),
+          accepted_policy_version = $2, policy_accepted_at = NOW()
+        WHERE id = $1
+      `, [userId, version]);
+      await client.query(`INSERT INTO audit_events (actor_user_id, event_type, subject_type, subject_id, details) VALUES ($1, 'account.policies_accepted', 'user', $1, $2)`, [userId, JSON.stringify({ version, adultConfirmed: true })]);
+      await client.query('COMMIT');
+      response.json({ accepted: version });
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      console.error('Policy acceptance failed', error);
+      response.status(503).json({ error: 'That didn’t save. Try again in a moment.' });
+    } finally {
+      client.release();
+    }
+  });
+
   // Restore an account that is still within its 30 days.
   router.post('/api/account/restore', authenticate, async (request: AuthenticatedRequest, response) => {
     const client = await pool.connect();
@@ -218,6 +252,8 @@ export async function purgeClosedAccounts(pool: Pool) {
       await client.query(`UPDATE sellers SET display_name = 'Closed shop', storefront_tagline = NULL WHERE user_id = $1`, [row.id]);
       await client.query(`UPDATE listings SET status = 'removed', paused_reason = NULL, updated_at = NOW() WHERE seller_id IN (SELECT id FROM sellers WHERE user_id = $1)`, [row.id]);
       await client.query(`UPDATE support_cases SET contact_name = NULL, contact_email = NULL, contact_phone = NULL WHERE requester_user_id = $1`, [row.id]);
+      // Seller verification records (legal name, NRC, PACRA number) are kept; the contact phone is not.
+      await client.query(`UPDATE seller_applications SET contact_phone = NULL WHERE seller_id IN (SELECT id FROM sellers WHERE user_id = $1)`, [row.id]);
       await client.query(`
         UPDATE users SET email = NULL, phone = NULL, status = 'deleted', deleted_at = NOW(),
           identity_subject = 'closed:' || id::text, deletion_due_at = NULL

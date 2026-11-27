@@ -74,6 +74,20 @@ const sellerTermsUrl = process.env.SELLER_TERMS_URL;
 const privacyNoticeVersion = process.env.PRIVACY_NOTICE_VERSION;
 const privacyNoticeUrl = process.env.PRIVACY_NOTICE_URL;
 
+/** Zambian NRC numbers look like 123456/78/9; accept them typed with spaces or without slashes. */
+function normaliseNrc(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const digits = value.replace(/[^0-9]/g, '');
+  return digits.length === 9 ? `${digits.slice(0, 6)}/${digits.slice(6, 8)}/${digits.slice(8)}` : null;
+}
+
+/** Zambian mobile numbers (097…, 077…, +260 96…) stored as +260XXXXXXXXX. */
+function normaliseZambianPhone(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const match = value.replace(/[\s\-().]/g, '').match(/^(?:\+?260|0)?([79][0-9]{8})$/);
+  return match ? `+260${match[1]}` : null;
+}
+
 async function authenticate(request: AuthenticatedRequest, response: Response, next: NextFunction) {
   if (!authenticationEnabled || !issuer || !audience?.length || !remoteJwks) {
     response.status(503).json({ error: 'Authentication provider is not configured.' });
@@ -151,13 +165,13 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
     // One look-up for the account's status (closing/closed) and, for customers, a verified seller record.
     const isStaff = roles.some((role) => staffRoles.includes(role));
     const account = await pool.query(`
-      SELECT u.status, u.deletion_due_at, (
+      SELECT u.status, u.deletion_due_at, u.accepted_policy_version, (
         SELECT s.seller_type FROM sellers s
         WHERE s.user_id = u.id AND s.verification_status = 'verified' LIMIT 1
       ) AS seller_type
       FROM users u WHERE u.identity_subject = $1
     `, [payload.sub]);
-    const accountRow = account.rows[0] as { status: 'active' | 'pending_deletion' | 'deleted'; deletion_due_at: Date | null; seller_type: string | null } | undefined;
+    const accountRow = account.rows[0] as { status: 'active' | 'pending_deletion' | 'deleted'; deletion_due_at: Date | null; accepted_policy_version: string | null; seller_type: string | null } | undefined;
     if (accountRow?.status === 'deleted') {
       response.status(403).json({ error: 'This Katondo account was closed.', code: 'account_closed' });
       return;
@@ -166,6 +180,14 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
     const closingAllowed = ['/api/account', '/api/account/settings', '/api/account/restore'];
     if (accountRow?.status === 'pending_deletion' && !closingAllowed.includes(request.path)) {
       response.status(403).json({ error: 'This account is being closed. Restore it from your account page to use Katondo again.', code: 'account_pending_deletion' });
+      return;
+    }
+    // Customers confirm they are 18+ and accept the current privacy notice and terms before anything else.
+    // They can still read their account, accept, or close the account if they don't agree.
+    const policyRequired = !isStaff && Boolean(privacyNoticeVersion) && accountRow?.accepted_policy_version !== privacyNoticeVersion;
+    const policyAllowed = ['/api/account', '/api/account/settings', '/api/account/accept-policies', '/api/account/close', '/api/account/restore'];
+    if (policyRequired && !policyAllowed.includes(request.path)) {
+      response.status(403).json({ error: 'Confirm you are 18 or over and accept Katondo’s privacy notice and terms to continue.', code: 'policies_required' });
       return;
     }
     // Sellers are approved in Katondo, not in the sign-in provider: add the seller role from the database.
@@ -227,6 +249,7 @@ async function authenticate(request: AuthenticatedRequest, response: Response, n
       objectId: typeof payload.oid === 'string' ? payload.oid : undefined,
       accountStatus: accountRow?.status ?? 'active',
       deletionDueAt: accountRow?.deletion_due_at instanceof Date ? accountRow.deletion_due_at.toISOString() : null,
+      policiesRequired: policyRequired,
       phoneVerified: payload.phone_number_verified === true,
     };
     next();
@@ -365,6 +388,16 @@ app.post('/api/seller/onboarding', authenticate, async (request: AuthenticatedRe
   const registrationNumber = typeof request.body?.businessRegistrationNumber === 'string'
     ? request.body.businessRegistrationNumber.trim()
     : '';
+  const nrcNumber = sellerType === 'individual' ? normaliseNrc(request.body?.nrcNumber) : null;
+  const contactPhone = sellerType === 'individual' ? normaliseZambianPhone(request.body?.contactPhone) : null;
+  if (sellerType === 'individual' && (!nrcNumber || !contactPhone)) {
+    response.status(400).json({ error: 'Give your NRC number (like 123456/78/9) and a Zambian phone number you can be reached on.' });
+    return;
+  }
+  if (request.body?.confirmAdult !== true) {
+    response.status(400).json({ error: 'Sellers must be 18 or over.' });
+    return;
+  }
 
   if (!['individual', 'business'].includes(sellerType) || displayName.length < 2 || displayName.length > 120 || legalName.length < 2 || legalName.length > 160 || city.length < 2 || city.length > 100 || (sellerType === 'business' && (registrationNumber.length < 2 || registrationNumber.length > 80)) || (sellerType === 'individual' && registrationNumber.length > 0)) {
     response.status(400).json({ error: 'Check the seller type, legal name, storefront name, city, and business registration number.' });
@@ -403,9 +436,9 @@ app.post('/api/seller/onboarding', authenticate, async (request: AuthenticatedRe
     await client.query(`
       INSERT INTO seller_applications (
         seller_id, legal_name, business_registration_number, city,
-        seller_terms_version, privacy_notice_version, country_code
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [sellerId, legalName, sellerType === 'business' ? registrationNumber : null, city, sellerTermsVersion, privacyNoticeVersion, market.countryCode]);
+        seller_terms_version, privacy_notice_version, country_code, nrc_number, contact_phone
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `, [sellerId, legalName, sellerType === 'business' ? registrationNumber : null, city, sellerTermsVersion, privacyNoticeVersion, market.countryCode, nrcNumber, contactPhone]);
     await client.query(`
       INSERT INTO seller_verification_events (seller_id, new_status, reason, actor_user_id)
       VALUES ($1, 'pending', 'Seller application submitted for review', $2)
@@ -439,7 +472,7 @@ app.get('/api/admin/seller-applications', authenticate, requireAnyRole(['super_a
     request.user!.platformUserId = await ensurePlatformUser(pool, request.user!);
     const result = await pool.query(`
       SELECT s.id, s.user_id, s.seller_type, s.display_name, s.verification_status,
-             a.legal_name, a.business_registration_number, a.city, a.country_code, a.accepted_at,
+             a.legal_name, a.business_registration_number, a.nrc_number, a.contact_phone, a.city, a.country_code, a.accepted_at,
              u.email, u.phone,
              triage.recommendation AS agent_recommendation,
              triage.summary AS agent_summary,

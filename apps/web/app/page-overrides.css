@@ -33,3 +33,28 @@ h1 em,.seller-intro h1 em{font-style:normal;color:inherit;letter-spacing:inherit
 .recovery-box{margin:6px 0 14px;padding:16px;border:1px solid var(--malachite);border-radius:12px;background:var(--surface)}.recovery-box h4{margin:0 0 4px;font-size:14px;color:var(--ink)}.recovery-box dl{margin:10px 0}.recovery-steps{margin:0 0 4px;padding-left:18px;display:grid;gap:6px;font-size:12px;color:var(--muted);line-height:1.55}.recovery-steps strong{color:var(--ink)}
 .recovery-outcome{border:0;padding:0;margin:0;display:grid;gap:6px}.recovery-outcome legend{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px}.recovery-outcome label{display:flex!important;align-items:center;gap:8px;font-weight:500!important}
 .recovery-outcome input[type=radio]{width:auto!important;margin:0;accent-color:var(--malachite)}
+
+/* Seller form: phone field matches the other text fields */
+.seller-form input[type=tel]{width:100%;height:43px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:0 12px;font:14px var(--sans);color:var(--ink)}
+
+/* Legal documents */
+.legal-page{padding-top:40px;padding-bottom:80px}
+.legal-doc{max-width:68ch;margin:0 auto;color:var(--ink);font-size:16px;line-height:1.65}
+.legal-doc h1{font:700 clamp(32px,5vw,48px)/1.05 var(--display);letter-spacing:-.03em;margin:0 0 10px}
+.legal-version{color:var(--muted);font-size:14px;margin:0 0 36px}
+.legal-doc h2{font:650 21px/1.25 var(--display);letter-spacing:-.01em;margin:40px 0 10px;scroll-margin-top:90px}
+.legal-doc p,.legal-doc ul{margin:0 0 14px}
+.legal-doc ul{padding-left:1.2em}
+.legal-doc li{margin-bottom:6px}
+
+/* Once-per-version age and policy confirmation */
+.policy-gate{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:20px;background:color-mix(in srgb,var(--ink) 55%,transparent)}
+.policy-gate-card{width:min(460px,100%);display:grid;gap:14px;padding:28px;border-radius:20px;background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+.policy-gate-card h2{margin:0;font:700 26px/1.1 var(--display);letter-spacing:-.02em}
+.policy-gate-card p{margin:0;color:var(--muted);line-height:1.55}
+.policy-check{display:flex;gap:10px;align-items:flex-start;font-weight:600;line-height:1.45}
+.policy-check input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--malachite);flex:none}
+.policy-check a,.policy-small a{color:var(--malachite);font-weight:650}
+.policy-actions{display:flex;align-items:center;gap:16px;margin-top:4px}
+.policy-actions .button-primary[disabled]{opacity:.5;cursor:not-allowed}
+.policy-small{font-size:13px}

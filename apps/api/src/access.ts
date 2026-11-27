@@ -33,6 +33,8 @@ export type AuthenticatedPrincipal = {
   objectId?: string;
   accountStatus?: 'active' | 'pending_deletion' | 'deleted';
   deletionDueAt?: string | null;
+  /** True until the person confirms they are 18+ and accepts the current privacy notice and terms. */
+  policiesRequired?: boolean;
 };
 
 export type AuthenticatedRequest = Request & { user?: AuthenticatedPrincipal };

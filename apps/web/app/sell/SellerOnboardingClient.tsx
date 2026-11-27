@@ -119,6 +119,9 @@ export default function SellerOnboardingClient() {
           displayName: form.get('displayName'),
           city: form.get('city'),
           businessRegistrationNumber: sellerType === 'business' ? form.get('businessRegistrationNumber') : '',
+          nrcNumber: sellerType === 'individual' ? form.get('nrcNumber') : undefined,
+          contactPhone: sellerType === 'individual' ? form.get('contactPhone') : undefined,
+          confirmAdult: form.get('confirmAdult') === 'on',
           acceptSellerTerms: form.get('acceptSellerTerms') === 'on',
           acknowledgePrivacyNotice: form.get('acknowledgePrivacyNotice') === 'on',
         }),
@@ -179,7 +182,10 @@ export default function SellerOnboardingClient() {
             <label>Legal name<input name="legalName" required minLength={2} maxLength={160} autoComplete="name" /></label>
             <label>Storefront name<input name="displayName" required minLength={2} maxLength={120} /></label>
             <label>City<input name="city" required minLength={2} maxLength={100} autoComplete="address-level2" /></label>
-            {sellerType === 'business' && <label>Business registration number<input name="businessRegistrationNumber" required minLength={2} maxLength={80} /></label>}
+            {sellerType === 'individual' && <label>NRC number<input name="nrcNumber" required inputMode="numeric" placeholder="123456/78/9" pattern="\s*[0-9]{6}\s*/?\s*[0-9]{2}\s*/?\s*[0-9]\s*" title="Like 123456/78/9" autoComplete="off" /></label>}
+            {sellerType === 'individual' && <label>Phone number<input name="contactPhone" required type="tel" inputMode="tel" placeholder="097 123 4567" autoComplete="tel" /></label>}
+            {sellerType === 'business' && <label>PACRA registration number<input name="businessRegistrationNumber" required minLength={2} maxLength={80} /></label>}
+            <label className="check-row"><input type="checkbox" name="confirmAdult" required /><span>I’m 18 or over{sellerType === 'business' ? ' and allowed to act for this business' : ''}.</span></label>
             <label className="check-row"><input type="checkbox" name="acceptSellerTerms" required /><span>I accept the <a href={config!.sellerTerms!.url} target="_blank" rel="noreferrer">Seller Terms ({config!.sellerTerms!.version})</a>.</span></label>
             <label className="check-row"><input type="checkbox" name="acknowledgePrivacyNotice" required /><span>I have read the <a href={config!.privacyNotice!.url} target="_blank" rel="noreferrer">Privacy Notice ({config!.privacyNotice!.version})</a>.</span></label>
             <button className="primary-button button-reset" type="submit" disabled={submitting}>{submitting ? 'Submitting…' : 'Submit application'}</button>
@@ -188,8 +194,8 @@ export default function SellerOnboardingClient() {
       )}
 
       <section className="seller-types">
-        <article><span className="seller-step">Individual seller</span><h2>Sell something personal</h2><p>For people giving a pre-loved item a new home. The application asks for your legal name, storefront name, and city.</p></article>
-        <article><span className="seller-step">Registered business</span><h2>Grow your business</h2><p>For registered businesses building a customer base. The application also asks for your business registration number.</p></article>
+        <article><span className="seller-step">Individual seller</span><h2>Sell something personal</h2><p>For people giving a pre-loved item a new home. The application asks for your legal name, NRC number, phone number, storefront name and city.</p></article>
+        <article><span className="seller-step">Registered business</span><h2>Grow your business</h2><p>For registered businesses building a customer base. The application also asks for your PACRA registration number.</p></article>
       </section>
 
       <section className="seller-review">

@@ -9,7 +9,7 @@ The initial TypeScript monorepo and a web-to-API catalogue slice are in place. T
 - Product requirements, architecture recommendation, phased roadmap, risks, and Milestone 0 acceptance criteria: [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)
 - Netlify + Railway staging deployment steps and current limitations: [DEPLOYMENT.md](DEPLOYMENT.md)
 - Zambia data-protection/hosting readiness checklist: [ZAMBIA_DATA_PROTECTION_READINESS.md](docs/compliance/ZAMBIA_DATA_PROTECTION_READINESS.md)
-- Counsel-review-only privacy and seller-terms drafts: [PRIVACY_NOTICE_DRAFT.md](docs/legal/PRIVACY_NOTICE_DRAFT.md), [SELLER_TERMS_DRAFT.md](docs/legal/SELLER_TERMS_DRAFT.md)
+- Legal documents (version 2026-12-01, shown on the site at `/privacy`, `/terms`, `/seller-terms`): [PRIVACY_NOTICE.md](docs/legal/PRIVACY_NOTICE.md), [TERMS_OF_USE.md](docs/legal/TERMS_OF_USE.md), [SELLER_TERMS.md](docs/legal/SELLER_TERMS.md)
 - Staff roles, AI service-agent access, and activity controls: [STAFF_AND_AGENT_ACCESS.md](docs/operations/STAFF_AND_AGENT_ACCESS.md)
 - Secure sign-in, policy approval and seller-onboarding release sequence: [SELLER_ONBOARDING_RELEASE.md](docs/compliance/SELLER_ONBOARDING_RELEASE.md)
 - Country configuration, isolation, and expansion rules: [COUNTRY_CONFIGURATION.md](docs/architecture/COUNTRY_CONFIGURATION.md)

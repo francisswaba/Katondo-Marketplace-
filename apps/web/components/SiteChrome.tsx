@@ -78,6 +78,9 @@ export async function SiteFooter({ countryName }: { countryName: string }) {
         <a href="/sell">Become a seller</a>
         <a href="/account">Account settings</a>
         <a href="/admin">Katondo team</a>
+        <a href="/privacy">Privacy notice</a>
+        <a href="/terms">Terms of use</a>
+        <a href="/seller-terms">Seller terms</a>
       </nav>
     </footer>
   );

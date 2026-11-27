@@ -28,7 +28,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - `apps/api` Express API (OIDC/JWT auth boundary, roles, activity tracking, release controls).
 - `apps/mobile` Expo (iOS/Android), id `com.katondo.marketplace`. Native screens: home (`app/index.tsx`), listing (`app/listing/[id].tsx`), shop with reviews (`app/shop/[id].tsx`). Shared theme/logo/artwork/stars in `components/kit.tsx`. Browse, search, sell, account and order reviews still open the website until in-app sign-in exists.
 - `packages/contracts` shared TypeScript types. Must build before web/api.
-- `infra/postgres/migrations` 001–013 (latest: 013 random staff numbers). `infra/keycloak` scaffold (not deployed).
+- `infra/postgres/migrations` 001–014 (latest: 014 policy acceptance, seller NRC/phone). `infra/keycloak` scaffold (not deployed).
 
 ## Commands
 - `npm run typecheck`, `npm run build`
@@ -43,7 +43,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 
 ## Safety rules for working on this project
 - Feature gates stay **off** until real approvals exist: `AUTH_ENABLED`, `AUTH_DATA_PROCESSING_APPROVED`, seller-application flags, `REVIEWS_ENABLED`, `MESSAGING_ENABLED`, `SUPPORT_ENABLED`. Never flip them to make something "work".
-- Legal docs in `docs/legal` are **drafts**; never describe them as approved.
+- Legal docs in `docs/legal` (privacy notice, terms of use, seller terms, version 2026-12-01, effective 1 Dec 2026) were written from the owner's answers on 2026-11-27 and are shown at `/privacy`, `/terms`, `/seller-terms`. The owner reports DPC registration and authorisation for storage outside Zambia. Everyone must be 18+ (Zambian law needs parental consent under 18). Signed-in customers must confirm 18+ and accept the current version (`PRIVACY_NOTICE_VERSION`) before using the API. Change a document → raise its version.
 - Don't call payments "escrow" until Zambian counsel / Bank of Zambia confirm.
 - Activity collection is opt-in, retention-limited, and never stores raw IPs.
 - AI agents use machine identities with narrow scopes and cannot approve/reject sellers.

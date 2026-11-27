@@ -5,6 +5,7 @@ import './account.css';
 import './release.css';
 import './page-overrides.css';
 import { fallbackMarket } from '../lib/market';
+import PolicyGate from '../components/PolicyGate';
 
 const market = fallbackMarket();
 
@@ -29,7 +30,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body>{children}</body>
+      <body>{children}<PolicyGate /></body>
     </html>
   );
 }
