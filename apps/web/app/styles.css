@@ -679,4 +679,5 @@ a.card:hover .card-art .art-pattern, a.card:hover .card-art .art-image { transfo
 .staff-result { margin: 0 0 14px; padding: 16px 18px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); line-height: 1.5; }
 .staff-result.ok { border-color: var(--malachite); }
 .staff-result.bad { border-color: var(--danger); }
+.staff-result.warn { border-style: dashed; border-color: var(--danger); }
 .staff-result a { color: var(--malachite); font-weight: 600; }

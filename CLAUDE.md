@@ -28,7 +28,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - `apps/api` Express API (OIDC/JWT auth boundary, roles, activity tracking, release controls).
 - `apps/mobile` Expo (iOS/Android), id `com.katondo.marketplace`. Native screens: home (`app/index.tsx`), listing (`app/listing/[id].tsx`), shop with reviews (`app/shop/[id].tsx`). Shared theme/logo/artwork/stars in `components/kit.tsx`. Browse, search, sell, account and order reviews still open the website until in-app sign-in exists.
 - `packages/contracts` shared TypeScript types. Must build before web/api.
-- `infra/postgres/migrations` 001–012 (latest: 012 account closing, recovery, staff numbers). `infra/keycloak` scaffold (not deployed).
+- `infra/postgres/migrations` 001–013 (latest: 013 random staff numbers). `infra/keycloak` scaffold (not deployed).
 
 ## Commands
 - `npm run typecheck`, `npm run build`
@@ -59,7 +59,7 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - Code done for Entra: scope check, default buyer role, seller role from database, email verified by provider, staff MFA via Conditional Access, Entra password wording, `NEXT_PUBLIC_AUTH_ENABLED` web switch, safe return paths. Still to do: in-app sign-in for the phone app (katondo-app registration exists), service-agent client-credential test, owner to add `email` optional claim on katondo-api.
 
 ## Account lifecycle (decided by the owner 2026-11-27)
-- Closing an account: hidden at once, restorable for 30 days, then anonymised; legal records kept. Lost email: `/help/recover`, 72-hour hold, identity check by one staff member and approval by a different one. Staff numbers (`S-0001`) shown on replies and checkable at `/help/check-staff`. Details in `DEPLOYMENT.md`.
+- Closing an account: hidden at once, restorable for 30 days, then anonymised; legal records kept. Lost email: `/help/recover`, 72-hour hold, identity check by one staff member and approval by a different one. Staff numbers (random with a check character, e.g. `S-7QM4-R9K`; migration 013) shown on replies and checkable at `/help/check-staff`. Details in `DEPLOYMENT.md`.
 
 ## Still to build (after sign-in)
 Payments + payouts (shortlist: Lenco/BroadPay + a second licensed provider; mobile money and cards), seller identity/business verification, delivery (Lusaka pilot with courier panel), media storage, auctions + live bidding, livestream (prototype Amazon IVS behind an adapter), email/SMS notifications, returns/disputes/refunds, monitoring, backup/restore tests, security review, app-store releases.

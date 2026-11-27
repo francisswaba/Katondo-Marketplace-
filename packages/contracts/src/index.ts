@@ -439,7 +439,7 @@ export type SupportCaseSummary = {
 export type SupportCaseMessage = {
   id: string;
   author: 'you' | 'katondo' | 'system';
-  /** For Katondo replies: the staff member's first name and staff number, e.g. "Mwila, S-0012". */
+  /** For Katondo replies: the staff member's first name and staff number, e.g. "Mwila, S-7QM4-R9K". */
   staffLabel?: string | null;
   body: string;
   createdAt: string;
@@ -460,3 +460,40 @@ export type SupportCaseDetail = SupportCaseSummary & {
 
 /** Days a closed account can be restored before Katondo anonymises it. */
 export const accountRestoreDays = 30;
+
+/**
+ * Staff numbers look like S-7QM4-R9K: six random characters and one check character.
+ * The alphabet leaves out 0, 1, I, L, O and U so numbers are easy to read aloud and type.
+ * The check character (Luhn mod 30) catches any single mistyped character and most swaps.
+ * Numbers are generated in the database (migration 013, katondo_new_staff_number).
+ */
+export const staffNumberAlphabet = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+export function staffNumberCheckCharacter(body: string): string | null {
+  const n = staffNumberAlphabet.length;
+  let factor = 2;
+  let total = 0;
+  for (let index = body.length - 1; index >= 0; index -= 1) {
+    const value = staffNumberAlphabet.indexOf(body[index]);
+    if (value < 0) return null;
+    let addend = factor * value;
+    factor = factor === 2 ? 1 : 2;
+    addend = Math.floor(addend / n) + (addend % n);
+    total += addend;
+  }
+  return staffNumberAlphabet[(n - (total % n)) % n];
+}
+
+export type StaffNumberCheck = { ok: true; staffNumber: string } | { ok: false; reason: 'format' | 'typo' };
+
+/** Tidies what someone typed (any case, spaces or dashes) and checks it, without contacting the server. */
+export function parseStaffNumber(input: string): StaffNumberCheck {
+  let compact = input.toUpperCase().replace(/[\s\-–—_.]/g, '');
+  if (compact.startsWith('S')) compact = compact.slice(1);
+  if (compact.length !== 7) return { ok: false, reason: 'format' };
+  const body = compact.slice(0, 6);
+  const expected = staffNumberCheckCharacter(body);
+  if (!expected || !staffNumberAlphabet.includes(compact[6])) return { ok: false, reason: 'format' };
+  if (expected !== compact[6]) return { ok: false, reason: 'typo' };
+  return { ok: true, staffNumber: `S-${body.slice(0, 4)}-${body.slice(4)}${compact[6]}` };
+}

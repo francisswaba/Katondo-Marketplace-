@@ -1,6 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import type { Pool, PoolClient } from 'pg';
 import {
+  parseStaffNumber,
   privacyRequestTypes,
   supportAppealWindowDays,
   supportCategories,
@@ -81,7 +82,7 @@ function anonymousLimited(request: Request, bucket = 'forms', perHour = 5) {
 /** Hours a lost-email recovery waits before staff may approve it, so the real owner can object. */
 const recoveryHoldHours = () => Math.max(1, Number(process.env.ACCOUNT_RECOVERY_HOLD_HOURS) || 72);
 
-/** First name and staff number, shown to customers on staff replies, e.g. "Mwila, S-0012". */
+/** First name and staff number, shown to customers on staff replies, e.g. "Mwila, S-7QM4-R9K". */
 export function staffLabel(displayName: string | null | undefined, staffNumber: string | null | undefined) {
   const first = (displayName ?? '').trim().split(/\s+/)[0] || 'Katondo';
   return staffNumber ? `${first}, ${staffNumber}` : first;
@@ -326,8 +327,9 @@ export function createSupportRouter(pool: Pool, authenticate: Authenticate) {
   // Anyone: check that a staff number belongs to someone who works for Katondo right now.
   router.get('/api/staff/verify/:number', requireSupport, async (request, response) => {
     if (anonymousLimited(request, 'staff-check', 30)) return void response.status(429).json({ error: 'Too many checks. Try again in an hour.' });
-    const number = String(request.params.number).trim().toUpperCase();
-    if (!/^S-\d{4,6}$/.test(number)) return void response.json({ valid: false });
+    const parsed = parseStaffNumber(String(request.params.number));
+    if (!parsed.ok) return void response.json({ valid: false, reason: parsed.reason });
+    const number = parsed.staffNumber;
     try {
       const result = await pool.query(`SELECT display_name, job_title FROM staff_members WHERE staff_number = $1 AND status = 'active'`, [number]);
       const row = result.rows[0];
