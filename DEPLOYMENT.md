@@ -155,5 +155,5 @@ Emails sent: help-request replies and decisions (people without an account get t
 
 Setup in Azure (PMCS subscription): create an **Email Communication Services** resource and add a domain (the free Azure-managed domain for testing; your own domain with its DNS records for launch), create a **Communication Services** resource and connect the domain to it, then copy its connection string into Railway as `ACS_CONNECTION_STRING`.
 
-Current setup (2026-11-27): Azure-managed domain, sender `DoNotReply@738dd467-8d3f-4d88-b0cb-1cbdb0e84509.eu1.azurecomm.net` (Europe). Move to an own domain before launch.
+Current setup (2026-11-27): Azure-managed domain, sender `DoNotReply@738dd467-8d3f-4d88-b0cb-1cbdb0e84509.azurecomm.net` (Europe). Move to an own domain before launch.
 
