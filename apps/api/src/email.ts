@@ -25,7 +25,8 @@ export type EmailTemplate =
   | 'recovery_received' | 'recovery_alert_old_email'
   | 'new_message'
   | 'account_closing' | 'account_restored'
-  | 'seller_application_received' | 'seller_application_rejected';
+  | 'seller_application_received' | 'seller_application_rejected'
+  | 'email_test';
 
 const provider = () => (process.env.EMAIL_PROVIDER || 'acs').toLowerCase();
 
@@ -164,6 +165,11 @@ function compose(template: EmailTemplate, params: Params): Rendered {
         { p: `Thanks for applying to sell on Katondo as “${text(params.shopName)}”. We check every application before a shop can go live, and we’ll email you when we’ve decided.` },
         { button: { label: 'Check your application', href: `${webUrl()}/sell` } },
       ] };
+    case 'email_test':
+      return { subject: 'Katondo email is working', blocks: [
+        { p: 'This is a test from Katondo’s email system. If you can read it, emails from Katondo are being delivered.' },
+        { p: `Sent from ${text(params.from)} at ${date(params.at)}.` },
+      ] };
     case 'seller_application_rejected':
       return { subject: 'About your seller application', blocks: [
         { p: `Hi ${name},` },
@@ -290,4 +296,10 @@ export function startEmailWorker(pool: Pool) {
   setInterval(() => { purgeOldEmails(pool).catch(() => undefined); }, 24 * 3_600_000).unref();
   void purgeOldEmails(pool).catch(() => undefined);
   if (emailEnabled()) console.log(`Email notifications on (${provider()}).`);
+  // One-off check: EMAIL_TEST_TO=<address> sends a single test email (at most once a day). Remove the variable afterwards.
+  const testTo = process.env.EMAIL_TEST_TO;
+  if (testTo && emailEnabled()) {
+    void queueEmail(pool, { to: testTo, template: 'email_test', params: { from: process.env.EMAIL_FROM, at: new Date().toISOString() }, dedupe: { key: `email-test:${testTo.toLowerCase()}`, minutes: 1440 } })
+      .then((queued) => console.log(queued ? 'Test email queued.' : 'Test email not queued (already sent in the last day, or the address is invalid).'));
+  }
 }

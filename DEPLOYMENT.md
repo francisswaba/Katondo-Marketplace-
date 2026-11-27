@@ -50,6 +50,7 @@ This repository now has a deployment path for the web storefront on Netlify and 
 | `ACS_CONNECTION_STRING` | **Secret.** From the Azure Communication Services resource → Keys. Paste it into Railway yourself |
 | `EMAIL_FROM` | Sender address from the connected email domain, e.g. `DoNotReply@<domain>` |
 | `EMAIL_REPLY_TO` | Where replies go, e.g. the support inbox (optional) |
+| `EMAIL_TEST_TO` | One-off check: sends one test email to this address when the API starts (at most once a day). Remove afterwards |
 | `PUBLIC_WEB_URL` | Website address used in email links, e.g. `https://katondo.netlify.app` |
 | `ACCOUNT_RECOVERY_HOLD_HOURS` | Hours a lost-email recovery waits before staff may approve it (default `72`) |
 | `PRIVACY_REQUEST_RESPONSE_DAYS` | Days to answer a personal-data request (default `30`; confirm the legal deadline with counsel) |
@@ -153,4 +154,6 @@ Code: `apps/api/src/email.ts`, migration `015_email_outbox.sql`. Emails are queu
 Emails sent: help-request replies and decisions (people without an account get the full text, signed-in people get a link); confirmation of personal-data and account-recovery requests; a warning to the old address on an account when someone asks to recover it; new messages (no message text, at most one per conversation every 30 minutes, can be switched off under Account settings → Message emails); account closing and restored; seller application received and declined.
 
 Setup in Azure (PMCS subscription): create an **Email Communication Services** resource and add a domain (the free Azure-managed domain for testing; your own domain with its DNS records for launch), create a **Communication Services** resource and connect the domain to it, then copy its connection string into Railway as `ACS_CONNECTION_STRING`.
+
+Current setup (2026-11-27): Azure-managed domain, sender `DoNotReply@738dd467-8d3f-4d88-b0cb-1cbdb0e84509.eu1.azurecomm.net` (Europe). Move to an own domain before launch.
 
