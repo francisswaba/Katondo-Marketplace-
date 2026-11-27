@@ -36,13 +36,13 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - `npm run db:migrate:deploy` (Railway pre-deploy), `npm run db:seed` (dev only; never seed production)
 
 ## Deployment (staging, live)
-- Web: Netlify, `apps/web` package dir, repo root as base. Site is access-protected (401 to anonymous) on purpose.
+- Web: Netlify, `apps/web` package dir, repo root as base. The production site katondo.netlify.app is **public** (only previews need Netlify team login); the owner chose to keep it public during the private sign-in test (2026-11-27).
 - API + PostgreSQL: Railway (`railway.toml`, health check `/health`). Pushing to `main` auto-deploys both.
 - Last deployed commit: `124531b` (migration 007 applied, API healthy).
 - See `DEPLOYMENT.md` for env vars.
 
 ## Safety rules for working on this project
-- Feature gates stay **off** until real approvals exist: `AUTH_ENABLED`, `AUTH_DATA_PROCESSING_APPROVED`, seller-application flags, `REVIEWS_ENABLED`, `MESSAGING_ENABLED`, `SUPPORT_ENABLED`. Never flip them to make something "work".
+- Feature gates change only on the owner's say-so, never to make something "work". Currently on: sign-in, messaging, help, email. Still off: seller-application flags, `REVIEWS_ENABLED`.
 - Legal docs in `docs/legal` (privacy notice, terms of use, seller terms, version 2026-12-01, effective 1 Dec 2026) were written from the owner's answers on 2026-11-27 and are shown at `/privacy`, `/terms`, `/seller-terms`. The owner reports DPC registration and authorisation for storage outside Zambia. Everyone must be 18+ (Zambian law needs parental consent under 18). Signed-in customers must confirm 18+ and accept the current version (`PRIVACY_NOTICE_VERSION`) before using the API. Change a document → raise its version.
 - Don't call payments "escrow" until Zambian counsel / Bank of Zambia confirm.
 - Activity collection is opt-in, retention-limited, and never stores raw IPs.
@@ -51,7 +51,9 @@ Multi-vendor marketplace (iOS, Android, web). Launch market: **Zambia** (ZMW, en
 - Ask before committing, pushing, or changing hosting/billing.
 
 ## Current status and next step
-**In progress: sign-in.** Zambian data-protection law defaults to in-country storage; offshore hosting needs DPC authorisation (see `docs/compliance/ZAMBIA_DATA_PROTECTION_READINESS.md`).
+**2026-11-27: private sign-in test by the owner.** Switched on by the owner's decision: `AUTH_ENABLED`, `AUTH_DATA_PROCESSING_APPROVED`, `MESSAGING_ENABLED`, `SUPPORT_ENABLED`, `EMAIL_ENABLED` (Railway) and `NEXT_PUBLIC_AUTH_ENABLED` (Netlify); policy versions 2026-12-01 set. Seller onboarding and reviews stay off.
+
+**Earlier: sign-in.** Zambian data-protection law defaults to in-country storage; offshore hosting needs DPC authorisation (see `docs/compliance/ZAMBIA_DATA_PROTECTION_READINESS.md`).
 - Option A (compliance-safe): Keycloak + PostgreSQL on SwiftCloud Zambia (app-3 + db-1, ~K766.50/month). Org "Katondo Marketplace" created; not yet funded.
 - Option B (cheapest/easiest): Microsoft Entra External ID (free < 50k MAU; ~US$35/month extra for a branded login domain). Stores data in EMEA, so needs cross-border approval before real users.
 - Owner's last direction: build global-first, keep Zambia features; was setting up Entra. Blocked on creating an Azure subscription (owner must do payment/verification).
